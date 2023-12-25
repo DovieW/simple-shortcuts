@@ -1,2 +1,2 @@
 # simple-shortcuts
-Simple Chrome extension to add useful shortcuts.
+Simple Chrome extension that adds useful shortcuts.

@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "version": "0.1.0",
+  "name": "Simple Shortcuts",
+  "description": "Simple Chrome extension that adds useful shortcuts.",
+  "icons": {
+    "16": "logo16.png",
+    "48": "logo48.png",
+    "128": "logo128.png"
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "commands": {
+    "duplicate-tab": {
+      "suggested_key": "Alt+Shift+D",
+      "description": "Duplicate tab"
+    },
+    "pin-tab": {
+      "suggested_key": "Alt+Shift+Z",
+      "description": "Pin tab"
+    },
+    "go-incognito": {
+      "suggested_key": "Alt+Shift+N",
+      "description": "Open tab in incognito"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
