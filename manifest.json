@@ -14,15 +14,15 @@
   "commands": {
     "duplicate-tab": {
       "suggested_key": "Alt+Shift+D",
-      "description": "Duplicate tab"
+      "description": "Duplicate tab(s)"
     },
     "pin-tab": {
       "suggested_key": "Alt+Shift+P",
-      "description": "Pin tab"
+      "description": "Pin tab(s)"
     },
     "go-incognito": {
       "suggested_key": "Alt+Shift+N",
-      "description": "Open tab in incognito"
+      "description": "Open tab(s) in incognito"
     },
     "open-tab-near": {
       "description": "Open tab near current and in same group"
