@@ -4,14 +4,20 @@ chrome.commands.onCommand.addListener((command, tab) => {
       chrome.tabs.create({ url: tabs[0].url, index: tabs[0].index + 1 });
     });
   } else if (command === 'pin-tab') {
-    // Query for all highlighted tabs in the current window
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
-      // Iterate through the tabs and toggle the pinned state
       tabs.forEach(tab => {
         chrome.tabs.update(tab.id, { pinned: !tab.pinned });
       });
     });
   } else if (command === 'go-incognito') {
     chrome.windows.create({ url: tab.url, incognito: true, focused: true, state: 'maximized' });
+  } else if (command === 'open-tab-near') {
+    // Create a new tab near the current one
+    chrome.tabs.create({ index: tab.index + 1 }, (newTab) => {
+      // If the current tab is part of a group, add the new tab to the same group
+      if (tab.groupId > 0) {
+        chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+      }
+    });
   }
 });

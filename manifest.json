@@ -23,6 +23,9 @@
     "go-incognito": {
       "suggested_key": "Alt+Shift+N",
       "description": "Open tab in incognito"
+    },
+    "open-tab-near": {
+      "description": "Open tab near current and in same group"
     }
   },
   "background": {
