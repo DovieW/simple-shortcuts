@@ -24,5 +24,19 @@ chrome.commands.onCommand.addListener((command, tab) => {
         chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
       }
     });
+  } else if (command === 'open-tab-at-end') {
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+      const lastIndex = tabs.length - 1;
+      chrome.tabs.create({ index: lastIndex + 1 });
+    });
+  } else if (command === 'add-tab-to-current-group') {
+    if (tab.groupId > 0) {
+      chrome.tabs.query({ groupId: tab.groupId }, (groupTabs) => {
+        const lastGroupTabIndex = Math.max(...groupTabs.map(t => t.index));
+        chrome.tabs.create({ index: lastGroupTabIndex + 1 }, (newTab) => {
+          chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+        });
+      });
+    }
   }
 });

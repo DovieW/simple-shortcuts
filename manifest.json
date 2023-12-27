@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Simple Shortcuts",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
@@ -26,6 +26,12 @@
     },
     "open-tab-near": {
       "description": "Open tab near current and in same group"
+    },
+    "add-tab-to-current-group": {
+      "description": "Open tab at the end of the current group"
+    },
+    "open-tab-at-end": {
+      "description": "Open tab at the end of all tabs"
     }
   },
   "background": {
