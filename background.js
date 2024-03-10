@@ -1,6 +1,6 @@
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'duplicate-tab') {
-    chrome.tabs.query({ active: true }, (tabs) => {
+    chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
       tabs.forEach(tab => {
         if (tab.pinned) {
           chrome.tabs.create({ url: tab.url, index: tab.index + 1, active: true, pinned: true });
