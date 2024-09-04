@@ -46,6 +46,17 @@ chrome.commands.onCommand.addListener((command, tab) => {
         });
       });
     }
+  } else if (command === "switch-windows") {
+    chrome.windows.getAll({populate: false, windowTypes: ["normal"]}, (windows) => {
+      if (windows.length < 2) return;
+
+      chrome.windows.getCurrent((currentWindow) => {
+        let currentIndex = windows.findIndex(w => w.id === currentWindow.id);
+        let nextIndex = (currentIndex + 1) % windows.length;
+        
+        chrome.windows.update(windows[nextIndex].id, { focused: true });
+      });
+    });
   }
 });
 
@@ -69,8 +80,8 @@ chrome.commands.onCommand.addListener(async (cmd) => {
       break;
     case MOVE_FRONT:
       let offset = 0;
-      const window = await chrome.windows.getCurrent();
-      const activeTab = await chrome.tabs.query({ windowId: window.id, active: true });
+      const window = await chrome.windows.getCurrent({populate: true});
+      const activeTab = window.tabs.filter(tab => tab.active);
       if (!activeTab[0].pinned) {
         offset = await chrome.tabs.query({ currentWindow: true, pinned: true });
         offset = offset.length;

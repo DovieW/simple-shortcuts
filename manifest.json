@@ -47,6 +47,9 @@
     },
     "move-tabs-to-back": {
       "description": "Move highlighted tab(s) to the back"
+    },
+    "switch-windows": {
+      "description": "Switch between windows"
     }
   },
   "background": {
