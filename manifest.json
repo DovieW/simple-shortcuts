@@ -11,7 +11,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "tabGroups"
+    "tabGroups",
+    "activeTab"
   ],
   "commands": {
     "duplicate-tab": {

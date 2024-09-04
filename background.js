@@ -55,10 +55,7 @@ chrome.commands.onCommand.addListener(async (cmd) => {
   const MOVE_FRONT = 'move-tabs-to-front';
   const MOVE_BACK = 'move-tabs-to-back';
 
-  // let allTabs = await chrome.tabs.query({ currentWindow: true });
-  // let pinned = await chrome.tabs.query({ currentWindow: true, pinned: true });
-  let highlightedTabs = await chrome.tabs.query({ currentWindow: true, highlighted: true, pinned: false });
-  // let highlightedPinnedTabs = await chrome.tabs.query({ currentWindow: true, highlighted: true, pinned: true });
+  let highlightedTabs = await chrome.tabs.query({ currentWindow: true, highlighted: true});
 
   switch (cmd) {
     case MOVE_LEFT:
@@ -71,7 +68,14 @@ chrome.commands.onCommand.addListener(async (cmd) => {
       moveTabs(highlightedTabs, -1, cmd);
       break;
     case MOVE_FRONT:
-      moveTabs(highlightedTabs, 0, cmd);
+      let offset = 0;
+      const window = await chrome.windows.getCurrent();
+      const activeTab = await chrome.tabs.query({ windowId: window.id, active: true });
+      if (!activeTab[0].pinned) {
+        offset = await chrome.tabs.query({ currentWindow: true, pinned: true });
+        offset = offset.length;
+      }
+      moveTabs(highlightedTabs, offset, cmd);
       break;
     default:
   }
@@ -87,6 +91,24 @@ async function moveTabs(tabs, destIndex, cmd) {
   let groupSkipped = false;
   let isTabInGroup = firstTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
   let tabToBeReplaced = allTabs[destIndex]; // If undefined, then the tab is being moved to the end
+
+  if (tabToBeReplaced) {
+    // if (tabToBeReplaced.pinned && cmd === 'move-tabs-to-front') {
+    //   tabToBeReplaced = allTabs[destIndex + 1];
+    // }
+
+    if (tabToBeReplaced.pinned && !firstTab.pinned) {
+      for (tabId of tabIds) {
+        chrome.tabs.update(tabId, { pinned: true });
+      }
+      return;
+    } else if (!tabToBeReplaced.pinned && firstTab.pinned) {
+      for (tabId of tabIds.reverse()) {
+        chrome.tabs.update(tabId, { pinned: false });
+      }
+      return;
+    }
+  }
 
   if (!goingToFrontOrBack && (destIndex < 0 || destIndex >= allTabs.length)) {
     if (isTabInGroup) {
