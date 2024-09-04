@@ -9,7 +9,9 @@
     "128": "logo128.png"
   },
   "permissions": [
-    "tabs"
+    "tabs",
+    "storage",
+    "tabGroups"
   ],
   "commands": {
     "duplicate-tab": {
@@ -32,6 +34,18 @@
     },
     "open-tab-at-end": {
       "description": "Open tab at the end of all tabs"
+    },
+    "move-tabs-left": {
+      "description": "Move highlighted tab(s) left"
+    },
+    "move-tabs-right": {
+      "description": "Move highlighted tab(s) right"
+    },
+    "move-tabs-to-front": {
+      "description": "Move highlighted tab(s) to the front"
+    },
+    "move-tabs-to-back": {
+      "description": "Move highlighted tab(s) to the back"
     }
   },
   "background": {
