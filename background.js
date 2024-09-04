@@ -27,10 +27,14 @@ chrome.commands.onCommand.addListener((command, tab) => {
       }
     });
   } else if (command === 'open-tab-near') {
-    chrome.tabs.create({ index: tab.index + 1 }, (newTab) => {
-      if (tab.groupId > 0) {
-        chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
-      }
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const tab = tabs[0];
+
+      chrome.tabs.create({ index: tab.index + 1, pinned: tab.pinned }, (newTab) => {
+        if (tab.groupId > 0) {
+          chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+        }
+      });
     });
   } else if (command === 'open-tab-at-end') {
     chrome.tabs.query({ currentWindow: true }, (tabs) => {
