@@ -50,6 +50,9 @@
     },
     "switch-windows": {
       "description": "Switch between windows"
+    },
+    "toggle-collapse-groups": {
+      "description": "Toggle collapse all tab groups"
     }
   },
   "background": {

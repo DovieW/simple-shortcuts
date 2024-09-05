@@ -61,7 +61,14 @@ chrome.commands.onCommand.addListener((command, tab) => {
         chrome.windows.update(windows[nextIndex].id, { focused: true });
       });
     });
-  }
+  } else if (command === "toggle-collapse-groups") {
+    chrome.tabGroups.query({windowId: chrome.windows.WINDOW_ID_CURRENT}, (groups) => {
+      if (groups.length === 0) return;
+      groups.forEach(group => {
+        chrome.tabGroups.update(group.id, { collapsed: !groups.every(group => group.collapsed)});
+      });
+    });
+  };
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
@@ -98,7 +105,8 @@ chrome.commands.onCommand.addListener(async (cmd) => {
 
 async function moveTabs(tabs, destIndex, cmd) {
   const allTabs = await chrome.tabs.query({ currentWindow: true });
-  const { skipClosedGroups } = await chrome.storage.sync.get({ skipClosedGroups: true });
+  // const { skipClosedGroups } = await chrome.storage.sync.get({ skipClosedGroups: true });
+  const skipClosedGroups = true;
   let tabsGoingRight = cmd === 'move-tabs-right' || cmd === 'move-tabs-to-back';
   const tabIds = tabs.map((tab) => tab.id);
   const firstTab = tabs[0];
