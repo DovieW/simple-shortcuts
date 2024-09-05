@@ -15,8 +15,10 @@ chrome.commands.onCommand.addListener((command, tab) => {
     });
   } else if (command === 'pin-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
+      const shouldPin = !tabs.every(tab => tab.pinned);
+      if (!shouldPin) tabs = tabs.reverse();
       tabs.forEach(tab => {
-        chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+        chrome.tabs.update(tab.id, { pinned: !tabs.every(tab => tab.pinned) });
       });
     });
   } else if (command === 'go-incognito') {
