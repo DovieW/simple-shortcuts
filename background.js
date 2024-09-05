@@ -30,7 +30,8 @@ chrome.commands.onCommand.addListener((command, tab) => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       const tab = tabs[0];
 
-      chrome.tabs.create({ index: tab.index + 1, pinned: tab.pinned }, (newTab) => {
+      // chrome.tabs.create({ index: tab.index + 1, pinned: tab.pinned }, (newTab) => {
+      chrome.tabs.create({ index: tab.index + 1, pinned: false }, (newTab) => {
         if (tab.groupId > 0) {
           chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
         }
