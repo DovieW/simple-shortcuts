@@ -53,6 +53,9 @@
     },
     "toggle-collapse-groups": {
       "description": "Toggle collapse all tab groups"
+    },
+    "switch-to-last-tab": {
+      "description": "Switch to the last active tab"
     }
   },
   "background": {

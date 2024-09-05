@@ -69,7 +69,25 @@ chrome.commands.onCommand.addListener((command, tab) => {
         chrome.tabGroups.update(group.id, { collapsed: !groups.every(group => group.collapsed)});
       });
     });
+  } else if (command === "switch-to-last-tab") {
+    chrome.storage.local.get("lastActiveTabs", (data) => {
+      const lastActiveTabs = data.lastActiveTabs || [null, null];
+      const lastTabId = lastActiveTabs[1];
+
+      if (lastTabId) chrome.tabs.update(lastTabId, { active: true });
+    });
   };
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  chrome.storage.local.get("lastActiveTabs", (data) => {
+    const lastActiveTabs = data.lastActiveTabs || [null, null];
+
+    lastActiveTabs[1] = lastActiveTabs[0];
+    lastActiveTabs[0] = activeInfo.tabId;
+
+    chrome.storage.local.set({ lastActiveTabs: lastActiveTabs });
+  });
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
