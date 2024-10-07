@@ -14,7 +14,7 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Move tab left:                                Alt + Shift + Left
 - Move tab to start:                            Alt + Shift + Up
 - Move tab to end:                              Alt + Shift + Down
-- Switch to last tab:                           Alt + O
-- Cycle windows:                                Alt + Shift + O
+- Switch to last active tab:                    Alt + A
+- Cycle windows:                                Alt + Shift + A
 - Toggle collapse all groups:                   Alt + Shift + G
 ```
