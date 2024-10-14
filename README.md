@@ -6,15 +6,15 @@ Currently adds these shortcuts with these default/suggested keymaps:
 ```text
 - Duplicate tab(s):                             Alt + Shift + D
 - Open tab(s) in incognito:                     Alt + Shift + N
-- Pin tab(s):                                   Alt + Shift + P
-- Open new tab near current and in same group:  Ctrl + T
-- Open new tab at the end of the current group: Alt + Shift + G
-- Open new tab at the end of all tabs:          Alt + Shift + E
-- Move tab right:                               Alt + Shift + Right
-- Move tab left:                                Alt + Shift + Left
-- Move tab to start:                            Alt + Shift + Up
-- Move tab to end:                              Alt + Shift + Down
+- Pin tab(s):                                   Alt + Shift + Z
+- Open new tab near current and in same group:  Ctrl + E
+- Open new tab at the end of the current group: Ctrl + Shift + G
+- Open new tab at the end of all tabs:          Ctrl + Shift + E
+- Move tab right:                               Alt + Shift + Right (or L)
+- Move tab left:                                Alt + Shift + Left (or H)
+- Move tab to start:                            Alt + Shift + Up (or K)
+- Move tab to end:                              Alt + Shift + Down (or J)
 - Switch to last active tab:                    Alt + A
 - Cycle windows:                                Alt + Shift + A
-- Toggle collapse all groups:                   Alt + Shift + G
+- Toggle collapse all groups:                   Ctrl + G
 ```
