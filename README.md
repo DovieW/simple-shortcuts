@@ -10,10 +10,10 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Open new tab near current and in same group:  Ctrl + E
 - Open new tab at the end of the current group: Ctrl + Shift + G
 - Open new tab at the end of all tabs:          Ctrl + Shift + E
-- Move tab right:                               Alt + Shift + Right (or L)
-- Move tab left:                                Alt + Shift + Left (or H)
-- Move tab to start:                            Alt + Shift + Up (or K)
-- Move tab to end:                              Alt + Shift + Down (or J)
+- Move tab(s) right:                               Alt + Shift + Right (or L)
+- Move tab(s) left:                                Alt + Shift + Left (or H)
+- Move tab(s) to start:                            Alt + Shift + Up (or K)
+- Move tab(s) to end:                              Alt + Shift + Down (or J)
 - Switch to last active tab:                    Alt + A
 - Cycle windows:                                Alt + Shift + A
 - Toggle collapse all groups:                   Ctrl + G
