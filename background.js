@@ -72,11 +72,31 @@ chrome.commands.onCommand.addListener((command, tab) => {
       });
     });
   } else if (command === "switch-to-last-tab") {
-    chrome.storage.local.get("lastActiveTabs", (data) => {
-      const lastActiveTabs = data.lastActiveTabs || [null, null];
-      const lastTabId = lastActiveTabs[1];
+    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
+      if (activeTabs.length === 0) {
+        return; // No active tab, nothing to do
+      }
+      const currentActualTabId = activeTabs[0].id;
 
-      if (lastTabId) chrome.tabs.update(lastTabId, { active: true });
+      chrome.storage.local.get({ lastActiveTabs: [null, null] }, (data) => {
+        const [s0, s1] = data.lastActiveTabs; // s0 is "current" from storage, s1 is "previous"
+
+        let targetTabId = null;
+        if (currentActualTabId === s0) {
+          // Current actual tab is the one that was last confirmed as active for >3s.
+          // So, we want to switch to the one *before* it in the confirmed history.
+          targetTabId = s1;
+        } else {
+          // Current actual tab is "newer" than s0 (switched to it <3s ago).
+          // So, s0 is the tab we were just on, making it the target for a toggle.
+          targetTabId = s0;
+        }
+
+        if (targetTabId) {
+          // chrome.tabs.update will do nothing if targetTabId is the same as currentActualTabId.
+          chrome.tabs.update(targetTabId, { active: true });
+        }
+      });
     });
   } else if (command === 'copy-url') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -93,15 +113,45 @@ chrome.commands.onCommand.addListener((command, tab) => {
   };
 });
 
+// Track tab activation with a delay to avoid rapid switching issues
+let tabActivationTimer = null;
+
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.storage.local.get("lastActiveTabs", (data) => {
-    const lastActiveTabs = data.lastActiveTabs || [null, null];
+  const activatedTabId = activeInfo.tabId; // Capture tabId for this specific event to use in the timeout
 
-    lastActiveTabs[1] = lastActiveTabs[0];
-    lastActiveTabs[0] = activeInfo.tabId;
-
-    chrome.storage.local.set({ lastActiveTabs: lastActiveTabs });
-  });
+  // Clear any existing timer to ensure only the latest activation is processed
+  if (tabActivationTimer) {
+    clearTimeout(tabActivationTimer);
+  }
+  
+  tabActivationTimer = setTimeout(() => {
+    // This callback executes only if no other tab was activated for 3 seconds.
+    // Confirm that 'activatedTabId' (the tab that started this timer) is still the active tab.
+    chrome.tabs.query({ active: true, currentWindow: true }, (currentTabs) => {
+      if (currentTabs.length > 0 && currentTabs[0].id === activatedTabId) {
+        // The tab 'activatedTabId' has indeed remained active for 3 seconds.
+        // Now, update the lastActiveTabs in storage.
+        chrome.storage.local.get({ lastActiveTabs: [null, null] }, (data) => {
+          let storedLastActiveTabs = data.lastActiveTabs; // Format: [currentTabId, previousTabId]
+          
+          // If the tab that just got confirmed (activatedTabId) is different from the
+          // one currently stored as the 'most recent' (storedLastActiveTabs[0]),
+          // then we need to update the list.
+          if (storedLastActiveTabs[0] !== activatedTabId) {
+            // The new 'most recent' is activatedTabId.
+            // The new 'second most recent' (previous) is the old 'most recent' (storedLastActiveTabs[0]).
+            const updatedTabs = [activatedTabId, storedLastActiveTabs[0]];
+            chrome.storage.local.set({ lastActiveTabs: updatedTabs });
+          }
+          // If storedLastActiveTabs[0] is already activatedTabId, it means this tab
+          // was already considered the most recent, and it just re-confirmed its status.
+          // In this scenario, the [current, previous] order in storage is still correct,
+          // and no update to chrome.storage.local is necessary.
+        });
+      }
+    });
+    tabActivationTimer = null; // The timer has completed its execution path, so clear its ID.
+  }, 1000); // 1.5 seconds delay
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
