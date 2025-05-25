@@ -120,17 +120,10 @@ chrome.commands.onCommand.addListener(async (cmd) => {
       moveTabs(highlightedTabs, highlightedTabs[highlightedTabs.length - 1].index + 1, cmd);
       break;
     case MOVE_BACK:
-      moveTabs(highlightedTabs, -1, cmd);
+      await handleMoveToBack(highlightedTabs);
       break;
     case MOVE_FRONT:
-      let offset = 0;
-      const window = await chrome.windows.getCurrent({populate: true});
-      const activeTab = window.tabs.filter(tab => tab.active);
-      if (!activeTab[0].pinned) {
-        offset = await chrome.tabs.query({ currentWindow: true, pinned: true });
-        offset = offset.length;
-      }
-      moveTabs(highlightedTabs, offset, cmd);
+      await handleMoveToFront(highlightedTabs);
       break;
     default:
   }
@@ -206,4 +199,103 @@ async function moveTabs(tabs, destIndex, cmd) {
 
   if (groupSkipped) tabsGoingRight ? destIndex-- : destIndex++; // Move tab just outside the group
   chrome.tabs.move(tabIds, { index: destIndex });
+}
+
+// Enhanced move to front handler with pin/unpin logic
+async function handleMoveToFront(highlightedTabs) {
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+  const pinnedTabs = allTabs.filter(tab => tab.pinned);
+  const firstHighlightedTab = highlightedTabs[0];
+  const tabIds = highlightedTabs.map(tab => tab.id);
+  
+  // Get the last action from storage to detect consecutive calls
+  const { lastAction } = await chrome.storage.local.get({ lastAction: null });
+  const currentAction = {
+    command: 'move-tabs-to-front',
+    tabIds: tabIds,
+    timestamp: Date.now()
+  };
+  
+  // Check if this is a consecutive call (within 2 seconds) with the same tabs
+  const isConsecutiveCall = lastAction && 
+    lastAction.command === 'move-tabs-to-front' &&
+    Date.now() - lastAction.timestamp < 2000 &&
+    arraysEqual(lastAction.tabIds, tabIds);
+  
+  if (firstHighlightedTab.pinned) {
+    // If tabs are already pinned, just move them to the front of pinned tabs
+    moveTabs(highlightedTabs, 0, 'move-tabs-to-front');
+  } else {
+    // Check if tabs are already at the front (right after pinned tabs)
+    const expectedIndex = pinnedTabs.length;
+    const isAtFront = highlightedTabs.every((tab, i) => tab.index === expectedIndex + i);
+    
+    if (isAtFront && isConsecutiveCall) {
+      // Second call: pin the tabs
+      for (const tabId of tabIds) {
+        await chrome.tabs.update(tabId, { pinned: true });
+      }
+    } else {
+      // First call or not at front: move to front (after pinned tabs)
+      const offset = pinnedTabs.length;
+      moveTabs(highlightedTabs, offset, 'move-tabs-to-front');
+    }
+  }
+  
+  // Store the current action
+  await chrome.storage.local.set({ lastAction: currentAction });
+}
+
+// Enhanced move to back handler with pin/unpin logic
+async function handleMoveToBack(highlightedTabs) {
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+  const firstHighlightedTab = highlightedTabs[0];
+  const tabIds = highlightedTabs.map(tab => tab.id);
+  
+  // Get the last action from storage to detect consecutive calls
+  const { lastAction } = await chrome.storage.local.get({ lastAction: null });
+  const currentAction = {
+    command: 'move-tabs-to-back',
+    tabIds: tabIds,
+    timestamp: Date.now()
+  };
+  
+  // Check if this is a consecutive call (within 2 seconds) with the same tabs
+  const isConsecutiveCall = lastAction && 
+    lastAction.command === 'move-tabs-to-back' &&
+    Date.now() - lastAction.timestamp < 2000 &&
+    arraysEqual(lastAction.tabIds, tabIds);
+  
+  if (firstHighlightedTab.pinned) {
+    // Check if pinned tabs are already at the end of pinned tabs
+    const pinnedTabs = allTabs.filter(tab => tab.pinned);
+    const lastPinnedIndex = pinnedTabs.length - 1;
+    const isAtEndOfPinned = highlightedTabs.every((tab, i) => 
+      tab.index === lastPinnedIndex - (highlightedTabs.length - 1) + i
+    );
+    
+    if (isAtEndOfPinned && isConsecutiveCall) {
+      // Second call: unpin the tabs
+      for (const tabId of tabIds.reverse()) {
+        await chrome.tabs.update(tabId, { pinned: false });
+      }
+    } else {
+      // First call or not at end: move to end of pinned tabs
+      const pinnedCount = pinnedTabs.length;
+      const targetIndex = pinnedCount - highlightedTabs.length;
+      moveTabs(highlightedTabs, Math.max(0, targetIndex), 'move-tabs-to-back');
+    }
+  } else {
+    // For unpinned tabs, just move to the back
+    moveTabs(highlightedTabs, -1, 'move-tabs-to-back');
+  }
+  
+  // Store the current action
+  await chrome.storage.local.set({ lastAction: currentAction });
+}
+
+// Helper function to compare arrays
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((val, i) => val === b[i]);
 }
