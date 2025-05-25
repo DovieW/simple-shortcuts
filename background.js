@@ -1,4 +1,24 @@
-chrome.commands.onCommand.addListener((command, tab) => {
+// Function to ensure offscreen document exists for clipboard access
+async function ensureOffscreenDocument() {
+  // Check if offscreen document already exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    documentUrls: [chrome.runtime.getURL('offscreen.html')]
+  });
+
+  if (existingContexts.length > 0) {
+    return; // Offscreen document already exists
+  }
+
+  // Create offscreen document
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['CLIPBOARD'],
+    justification: 'Read clipboard content for URL/search functionality'
+  });
+}
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === 'duplicate-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
       tabs.forEach(tab => {
@@ -90,6 +110,39 @@ chrome.commands.onCommand.addListener((command, tab) => {
         });
       }
     });
+  } else if (command === 'open-clipboard-url') {
+    try {
+      // Ensure offscreen document exists
+      await ensureOffscreenDocument();
+      
+      // Send message to offscreen document to read clipboard
+      const response = await chrome.runtime.sendMessage({ action: 'readClipboard' });
+      
+      if (response.success) {
+        const clipboardContent = response.text.trim();
+        
+        if (clipboardContent) {
+          let url;
+          
+          // Check if clipboard content is a valid URL
+          try {
+            new URL(clipboardContent);
+            url = clipboardContent;
+          } catch {
+            // If not a valid URL, treat as search query
+            // Use Google search as default search engine
+            url = `https://www.google.com/search?q=${encodeURIComponent(clipboardContent)}`;
+          }
+          
+          // Create new tab with the URL
+          chrome.tabs.create({ url: url, active: true });
+        }
+      } else {
+        console.error('Failed to read clipboard:', response.error);
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
   };
 });
 

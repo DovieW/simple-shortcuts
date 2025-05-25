@@ -13,7 +13,9 @@
     "storage",
     "tabGroups",
     "activeTab",
-    "scripting"
+    "scripting",
+    "clipboardRead",
+    "offscreen"
   ],
   "commands": {
     "duplicate-tab": {
@@ -60,6 +62,9 @@
     },
     "copy-url": {
       "description": "Copy current tab URL to clipboard"
+    },
+    "open-clipboard-url": {
+      "description": "Open new tab with clipboard content as URL or search"
     }
   },
   "action": {
