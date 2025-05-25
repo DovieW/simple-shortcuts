@@ -201,12 +201,13 @@ async function moveTabs(tabs, destIndex, cmd) {
   chrome.tabs.move(tabIds, { index: destIndex });
 }
 
-// Enhanced move to front handler with pin/unpin logic
+// Enhanced move to front handler with group-aware and pin/unpin logic
 async function handleMoveToFront(highlightedTabs) {
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   const pinnedTabs = allTabs.filter(tab => tab.pinned);
   const firstHighlightedTab = highlightedTabs[0];
   const tabIds = highlightedTabs.map(tab => tab.id);
+  const isTabInGroup = firstHighlightedTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
   
   // Get the last action from storage to detect consecutive calls
   const { lastAction } = await chrome.storage.local.get({ lastAction: null });
@@ -225,7 +226,23 @@ async function handleMoveToFront(highlightedTabs) {
   if (firstHighlightedTab.pinned) {
     // If tabs are already pinned, just move them to the front of pinned tabs
     moveTabs(highlightedTabs, 0, 'move-tabs-to-front');
+  } else if (isTabInGroup) {
+    // Handle grouped tabs
+    const groupTabs = allTabs.filter(tab => tab.groupId === firstHighlightedTab.groupId);
+    const firstGroupTabIndex = Math.min(...groupTabs.map(tab => tab.index));
+    
+    // Check if tabs are already at the front of the group
+    const isAtFrontOfGroup = highlightedTabs.every((tab, i) => tab.index === firstGroupTabIndex + i);
+    
+    if (isAtFrontOfGroup && isConsecutiveCall) {
+      // Second call: ungroup tabs without moving them
+      chrome.tabs.ungroup(tabIds);
+    } else {
+      // First call or not at front of group: move to front of group
+      chrome.tabs.move(tabIds, { index: firstGroupTabIndex });
+    }
   } else {
+    // Handle ungrouped tabs
     // Check if tabs are already at the front (right after pinned tabs)
     const expectedIndex = pinnedTabs.length;
     const isAtFront = highlightedTabs.every((tab, i) => tab.index === expectedIndex + i);
@@ -246,11 +263,12 @@ async function handleMoveToFront(highlightedTabs) {
   await chrome.storage.local.set({ lastAction: currentAction });
 }
 
-// Enhanced move to back handler with pin/unpin logic
+// Enhanced move to back handler with group-aware and pin/unpin logic
 async function handleMoveToBack(highlightedTabs) {
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   const firstHighlightedTab = highlightedTabs[0];
   const tabIds = highlightedTabs.map(tab => tab.id);
+  const isTabInGroup = firstHighlightedTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
   
   // Get the last action from storage to detect consecutive calls
   const { lastAction } = await chrome.storage.local.get({ lastAction: null });
@@ -285,8 +303,26 @@ async function handleMoveToBack(highlightedTabs) {
       const targetIndex = pinnedCount - highlightedTabs.length;
       moveTabs(highlightedTabs, Math.max(0, targetIndex), 'move-tabs-to-back');
     }
+  } else if (isTabInGroup) {
+    // Handle grouped tabs
+    const groupTabs = allTabs.filter(tab => tab.groupId === firstHighlightedTab.groupId);
+    const lastGroupTabIndex = Math.max(...groupTabs.map(tab => tab.index));
+    
+    // Check if tabs are already at the back of the group
+    const isAtBackOfGroup = highlightedTabs.every((tab, i) => 
+      tab.index === lastGroupTabIndex - (highlightedTabs.length - 1) + i
+    );
+    
+    if (isAtBackOfGroup && isConsecutiveCall) {
+      // Second call: ungroup tabs without moving them
+      chrome.tabs.ungroup(tabIds);
+    } else {
+      // First call or not at back of group: move to back of group
+      const targetIndex = lastGroupTabIndex - highlightedTabs.length + 1;
+      chrome.tabs.move(tabIds, { index: targetIndex });
+    }
   } else {
-    // For unpinned tabs, just move to the back
+    // Handle ungrouped tabs - just move to the back
     moveTabs(highlightedTabs, -1, 'move-tabs-to-back');
   }
   
