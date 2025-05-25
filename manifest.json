@@ -12,7 +12,8 @@
     "tabs",
     "storage",
     "tabGroups",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "commands": {
     "duplicate-tab": {
@@ -56,6 +57,9 @@
     },
     "switch-to-last-tab": {
       "description": "Switch to the last active tab"
+    },
+    "copy-url": {
+      "description": "Copy current tab URL to clipboard"
     }
   },
   "action": {

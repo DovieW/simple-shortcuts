@@ -78,6 +78,18 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
       if (lastTabId) chrome.tabs.update(lastTabId, { active: true });
     });
+  } else if (command === 'copy-url') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length > 0) {
+        const currentTab = tabs[0];
+        chrome.scripting.executeScript({
+          target: { tabId: currentTab.id },
+          func: () => {
+            navigator.clipboard.writeText(window.location.href);
+          }
+        });
+      }
+    });
   };
 });
 
