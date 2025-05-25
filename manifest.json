@@ -58,6 +58,10 @@
       "description": "Switch to the last active tab"
     }
   },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Simple Shortcuts"
+  },
   "background": {
     "service_worker": "background.js"
   }
