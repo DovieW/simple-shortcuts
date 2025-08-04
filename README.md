@@ -16,6 +16,7 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Move tab(s) to end:                           Alt + Shift + Down (or J)
 - Switch to last active tab:                    Alt + A
 - Cycle windows:                                Alt + Shift + A
+- Move tab(s) to different window:              Ctrl + Shift A
 - Toggle collapse all groups:                   Ctrl + G
 - Copy current tab URL to clipboard:            Ctrl + Shift + C
 ```
