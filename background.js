@@ -1,3 +1,32 @@
+// Helper function to check if a tab is blank (new tab)
+function isBlankTab(tab) {
+  // Check for various forms of blank/new tab URLs
+  return tab.url === 'chrome://newtab/' || 
+         tab.url === 'about:blank' || 
+         tab.url === '' ||
+         tab.url === 'chrome://newtab' ||
+         tab.title === 'New Tab' ||
+         (tab.url.startsWith('chrome://newtab') && tab.title === 'New Tab');
+}
+
+// Helper function to find or create a tab at a specific position
+async function findOrCreateTabAtPosition(targetIndex, options = {}) {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  
+  // Check if there's already a tab at the target position
+  if (targetIndex < tabs.length) {
+    const tabAtPosition = tabs[targetIndex];
+    if (isBlankTab(tabAtPosition)) {
+      // Switch to the existing blank tab instead of creating a new one
+      chrome.tabs.update(tabAtPosition.id, { active: true });
+      return tabAtPosition;
+    }
+  }
+  
+  // No blank tab at position, create a new one
+  return chrome.tabs.create({ index: targetIndex, ...options });
+}
+
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'duplicate-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
@@ -29,11 +58,28 @@ chrome.commands.onCommand.addListener((command, tab) => {
       }
     });
   } else if (command === 'open-tab-near') {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
       const tab = tabs[0];
+      const targetIndex = tab.index + 1;
 
-      // chrome.tabs.create({ index: tab.index + 1, pinned: tab.pinned }, (newTab) => {
-      chrome.tabs.create({ index: tab.index + 1, pinned: false }, (newTab) => {
+      // Check if there's already a blank tab at the target position
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+      if (targetIndex < allTabs.length) {
+        const tabAtPosition = allTabs[targetIndex];
+        
+        // Only reuse the blank tab if it's in the same group (or both are ungrouped)
+        const sameGroup = (tab.groupId === tabAtPosition.groupId) || 
+                         (tab.groupId <= 0 && tabAtPosition.groupId <= 0);
+        
+        if (isBlankTab(tabAtPosition) && sameGroup) {
+          // Switch to the existing blank tab instead of creating a new one
+          chrome.tabs.update(tabAtPosition.id, { active: true });
+          return;
+        }
+      }
+
+      // No suitable blank tab at position, create a new one
+      chrome.tabs.create({ index: targetIndex, pinned: false }, (newTab) => {
         if (tab.groupId > 0) {
           chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
         }
@@ -42,16 +88,42 @@ chrome.commands.onCommand.addListener((command, tab) => {
   } else if (command === 'open-tab-at-end') {
     chrome.tabs.query({ currentWindow: true }, (tabs) => {
       const lastIndex = tabs.length - 1;
-      chrome.tabs.create({ index: lastIndex + 1 });
+      
+      // Debug logging
+      if (tabs.length > 0) {
+        const lastTab = tabs[lastIndex];
+      }
+      
+      // Check if the last tab is already a blank tab
+      if (tabs.length > 0 && isBlankTab(tabs[lastIndex])) {
+        // Switch to the existing blank tab at the end
+        chrome.tabs.update(tabs[lastIndex].id, { active: true });
+      } else {
+        // Create a new tab at the end
+        chrome.tabs.create({ index: lastIndex + 1 });
+      }
     });
   } else if (command === 'add-tab-to-current-group') {
     if (tab.groupId > 0) {
-      chrome.tabs.query({ groupId: tab.groupId }, (groupTabs) => {
+      chrome.tabs.query({ currentWindow: true }, (allTabs) => {
+        // Get all tabs in the current group
+        const groupTabs = allTabs.filter(t => t.groupId === tab.groupId);
         const lastGroupTabIndex = Math.max(...groupTabs.map(t => t.index));
-        chrome.tabs.create({ index: lastGroupTabIndex + 1 }, (newTab) => {
-          chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
-        });
+        const lastGroupTab = allTabs.find(t => t.index === lastGroupTabIndex);
+        
+        // Check if the last tab in the group is already a blank tab
+        if (isBlankTab(lastGroupTab)) {
+          // The last tab in the group is already blank, just switch to it
+          chrome.tabs.update(lastGroupTab.id, { active: true });
+        } else {
+          // Create a new tab at the end of the group
+          const targetIndex = lastGroupTabIndex + 1;
+          chrome.tabs.create({ index: targetIndex }, (newTab) => {
+            chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+          });
+        }
       });
+    } else {
     }
   } else if (command === "switch-windows") {
     chrome.windows.getAll({populate: false, windowTypes: ["normal"]}, (windows) => {
