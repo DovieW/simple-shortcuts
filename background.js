@@ -232,6 +232,8 @@ chrome.commands.onCommand.addListener((command, tab) => {
         });
       });
     });
+  } else if (command === 'move-all-groups') {
+    handleMoveAllGroups();
   }
 });
 
@@ -496,6 +498,88 @@ async function handleMoveToBack(highlightedTabs) {
   } else {
     // Handle ungrouped tabs - just move to the back
     moveTabs(highlightedTabs, -1, 'move-tabs-to-back');
+  }
+  
+  // Store the current action
+  await chrome.storage.local.set({ lastAction: currentAction });
+}
+
+// Handle moving all groups to front or back
+async function handleMoveAllGroups() {
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+  const groups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+  
+  if (groups.length === 0) {
+    return; // No groups to move
+  }
+  
+  // Get all tabs that are in groups
+  const groupedTabs = allTabs.filter(tab => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+  const ungroupedTabs = allTabs.filter(tab => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE);
+  const pinnedTabs = allTabs.filter(tab => tab.pinned);
+  
+  if (groupedTabs.length === 0) {
+    return; // No grouped tabs to move
+  }
+  
+  // Get the last action from storage to detect consecutive calls
+  const { lastAction } = await chrome.storage.local.get({ lastAction: null });
+  const currentAction = {
+    command: 'move-all-groups',
+    timestamp: Date.now()
+  };
+  
+  // Check if this is a consecutive call (within 2 seconds)
+  const isConsecutiveCall = lastAction && 
+    lastAction.command === 'move-all-groups' &&
+    Date.now() - lastAction.timestamp < 2000;
+  
+  // Check if all groups are at the front (right after pinned tabs)
+  const firstGroupedIndex = Math.min(...groupedTabs.map(tab => tab.index));
+  const lastGroupedIndex = Math.max(...groupedTabs.map(tab => tab.index));
+  const allGroupsAtFront = firstGroupedIndex === pinnedTabs.length;
+  
+  // Check if all groups are at the back (no ungrouped tabs after them)
+  const lastUngroupedIndex = Math.max(...ungroupedTabs.map(tab => tab.index), -1);
+  const allGroupsAtBack = lastGroupedIndex > lastUngroupedIndex;
+  
+  // Decide whether to move to front or back
+  // Default is to move to back, unless groups are already at back
+  const moveToFront = allGroupsAtBack;
+  
+  if (moveToFront) {
+    // Move all groups to the front (after pinned tabs)
+    const targetIndex = pinnedTabs.length;
+    
+    // Sort groups by their current position to maintain relative order
+    const sortedGroups = groups.sort((a, b) => {
+      const aFirstTab = groupedTabs.find(tab => tab.groupId === a.id);
+      const bFirstTab = groupedTabs.find(tab => tab.groupId === b.id);
+      return aFirstTab.index - bFirstTab.index;
+    });
+    
+    // Move groups in reverse order so they end up in the correct order
+    // When we move to the same index, each group gets inserted at that position,
+    // pushing previously moved groups to the right
+    for (let i = sortedGroups.length - 1; i >= 0; i--) {
+      const group = sortedGroups[i];
+      await chrome.tabGroups.move(group.id, { index: targetIndex });
+    }
+  } else {
+    // Move all groups to the back
+    // Sort groups by their current position to maintain relative order
+    const sortedGroups = groups.sort((a, b) => {
+      const aFirstTab = groupedTabs.find(tab => tab.groupId === a.id);
+      const bFirstTab = groupedTabs.find(tab => tab.groupId === b.id);
+      return aFirstTab.index - bFirstTab.index;
+    });
+    
+    // Move groups to the end in forward order to maintain their relative positions
+    // When using index: -1, each group gets appended to the end, so we move in forward order
+    for (let i = 0; i < sortedGroups.length; i++) {
+      const group = sortedGroups[i];
+      await chrome.tabGroups.move(group.id, { index: -1 });
+    }
   }
   
   // Store the current action

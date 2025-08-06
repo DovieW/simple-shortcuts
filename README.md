@@ -18,5 +18,6 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Cycle windows:                                Alt + Shift + A
 - Move tab(s) to different window:              Ctrl + Shift A
 - Toggle collapse all groups:                   Ctrl + G
+- Move all groups to front/back:                Alt + Shift + G
 - Copy current tab URL to clipboard:            Ctrl + Shift + C
 ```

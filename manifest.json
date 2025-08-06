@@ -63,6 +63,9 @@
     },
     "move-tabs-to-window": {
       "description": "Move highlighted tab(s) to different window (cycle)"
+    },
+    "move-all-groups": {
+      "description": "Move all groups to front or back"
     }
   },
   "action": {
