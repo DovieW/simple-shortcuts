@@ -60,6 +60,9 @@
     },
     "copy-url": {
       "description": "Copy current tab URL to clipboard"
+    },
+    "move-tabs-to-window": {
+      "description": "Move highlighted tab(s) to different window (cycle)"
     }
   },
   "action": {

@@ -182,7 +182,57 @@ chrome.commands.onCommand.addListener((command, tab) => {
         });
       }
     });
-  };
+  } else if (command === 'move-tabs-to-window') {
+    chrome.tabs.query({ highlighted: true, currentWindow: true }, (highlightedTabs) => {
+      if (highlightedTabs.length === 0) return;
+      
+      chrome.windows.getAll({ populate: false, windowTypes: ["normal"] }, (windows) => {
+        if (windows.length < 2) return; // Need at least 2 windows to move tabs
+        
+        chrome.windows.getCurrent((currentWindow) => {
+          // Find current window index
+          let currentIndex = windows.findIndex(w => w.id === currentWindow.id);
+          // Calculate next window index (cycle)
+          let nextIndex = (currentIndex + 1) % windows.length;
+          let targetWindow = windows[nextIndex];
+          
+          // Move tabs to target window first
+          const tabIds = highlightedTabs.map(tab => tab.id);
+          const firstTabId = tabIds[0]; // Store the first tab ID to activate
+          
+          chrome.tabs.move(tabIds, { windowId: targetWindow.id, index: -1 }, () => {
+            // Focus the target window first
+            chrome.windows.update(targetWindow.id, { focused: true }, () => {
+              // If multiple tabs were moved, highlight them all using chrome.tabs.highlight
+              if (tabIds.length > 1) {
+                // Query the target window to get the indices of moved tabs
+                chrome.tabs.query({ windowId: targetWindow.id }, (windowTabs) => {
+                  const movedTabIndices = [];
+                  tabIds.forEach(tabId => {
+                    const tab = windowTabs.find(t => t.id === tabId);
+                    if (tab) {
+                      movedTabIndices.push(tab.index);
+                    }
+                  });
+                  
+                  // Highlight all moved tabs by their indices
+                  if (movedTabIndices.length > 0) {
+                    chrome.tabs.highlight({
+                      windowId: targetWindow.id,
+                      tabs: movedTabIndices
+                    });
+                  }
+                });
+              } else {
+                // Single tab, just make it active
+                chrome.tabs.update(firstTabId, { active: true });
+              }
+            });
+          });
+        });
+      });
+    });
+  }
 });
 
 // Track tab activation with a delay to avoid rapid switching issues

@@ -13,7 +13,8 @@ const commandDescriptions = {
   'switch-windows': 'Switch between windows',
   'toggle-collapse-groups': 'Toggle collapse all tab groups',
   'switch-to-last-tab': 'Switch to the last active tab',
-  'copy-url': 'Copy current tab URL to clipboard'
+  'copy-url': 'Copy current tab URL to clipboard',
+  'move-tabs-to-window': 'Move highlighted tab(s) to different window (cycle)'
 };
 
 // Format shortcut keys for display
