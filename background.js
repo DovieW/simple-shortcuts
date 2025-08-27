@@ -9,6 +9,29 @@ function isBlankTab(tab) {
          (tab.url.startsWith('chrome://newtab') && tab.title === 'New Tab');
 }
 
+// Replace a reusable blank tab with a *freshly created* new tab at the same logical spot.
+// This is the most reliable way to get Chrome to auto-select the omnibox.
+// Rationale: Simply re-activating an existing New Tab does not always re-select the URL bar
+// if the user had interacted with it previously. Creating a brand new NTP almost always does.
+async function replaceBlankTabWithFresh(blankTab, { groupId = null } = {}) {
+  if (!blankTab) return;
+  const index = blankTab.index;
+  const targetWindowId = blankTab.windowId;
+  const inGroup = groupId != null && groupId > 0;
+
+  // Remove the old blank tab (ignore errors if already gone)
+  try { await chrome.tabs.remove(blankTab.id); } catch (e) {}
+
+  // Create the new tab; Chrome will usually auto-focus omnibox for a brand new NTP.
+  const newTab = await chrome.tabs.create({ index, windowId: targetWindowId });
+  if (inGroup) {
+    try { await chrome.tabs.group({ groupId, tabIds: newTab.id }); } catch (e) {}
+  }
+  // Ensure window focused (paranoid reinforcement for omnibox focus)
+  try { await chrome.windows.update(targetWindowId, { focused: true }); } catch (e) {}
+  return newTab;
+}
+
 // Helper function to find or create a tab at a specific position
 async function findOrCreateTabAtPosition(targetIndex, options = {}) {
   const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -72,8 +95,9 @@ chrome.commands.onCommand.addListener((command, tab) => {
                          (tab.groupId <= 0 && tabAtPosition.groupId <= 0);
         
         if (isBlankTab(tabAtPosition) && sameGroup) {
-          // Switch to the existing blank tab instead of creating a new one
-          chrome.tabs.update(tabAtPosition.id, { active: true });
+          await replaceBlankTabWithFresh(tabAtPosition, {
+            groupId: tab.groupId > 0 ? tab.groupId : null,
+          });
           return;
         }
       }
@@ -96,8 +120,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
       
       // Check if the last tab is already a blank tab
       if (tabs.length > 0 && isBlankTab(tabs[lastIndex])) {
-        // Switch to the existing blank tab at the end
-        chrome.tabs.update(tabs[lastIndex].id, { active: true });
+        replaceBlankTabWithFresh(tabs[lastIndex], { groupId: null });
       } else {
         // Create a new tab at the end
         chrome.tabs.create({ index: lastIndex + 1 });
@@ -113,8 +136,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
         
         // Check if the last tab in the group is already a blank tab
         if (isBlankTab(lastGroupTab)) {
-          // The last tab in the group is already blank, just switch to it
-          chrome.tabs.update(lastGroupTab.id, { active: true });
+          replaceBlankTabWithFresh(lastGroupTab, { groupId: tab.groupId });
         } else {
           // Create a new tab at the end of the group
           const targetIndex = lastGroupTabIndex + 1;
