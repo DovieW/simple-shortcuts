@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "name": "Simple Shortcuts",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
@@ -8,13 +8,7 @@
     "48": "logo48.png",
     "128": "logo128.png"
   },
-  "permissions": [
-    "tabs",
-    "storage",
-    "tabGroups",
-    "activeTab",
-    "scripting"
-  ],
+  "permissions": ["tabs", "storage", "tabGroups", "activeTab", "scripting"],
   "commands": {
     "duplicate-tab": {
       "suggested_key": "Alt+Shift+D",
