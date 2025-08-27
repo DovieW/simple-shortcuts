@@ -112,19 +112,34 @@ chrome.commands.onCommand.addListener((command, tab) => {
   } else if (command === 'open-tab-at-end') {
     chrome.tabs.query({ currentWindow: true }, (tabs) => {
       const lastIndex = tabs.length - 1;
-      
+
       // Debug logging
       if (tabs.length > 0) {
         const lastTab = tabs[lastIndex];
       }
-      
-      // Check if the last tab is already a blank tab
-      if (tabs.length > 0 && isBlankTab(tabs[lastIndex])) {
-        replaceBlankTabWithFresh(tabs[lastIndex], { groupId: null });
-      } else {
-        // Create a new tab at the end
-        chrome.tabs.create({ index: lastIndex + 1 });
+
+      // We only want to "reuse" (refresh) an existing blank tab at the end
+      // if it is NOT inside a group. If the last tab is a blank tab that is
+      // grouped, we must ignore it and instead create a brand new ungrouped
+      // tab after all tabs. Previous behavior ungrouped the tab (by replacing
+      // it without re-adding to the group), which was undesirable.
+      if (tabs.length > 0) {
+        const lastTab = tabs[lastIndex];
+        const isUngrouped =
+          lastTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ||
+          lastTab.groupId <= 0;
+        const isReusableBlank = isBlankTab(lastTab) && isUngrouped;
+
+        if (isReusableBlank) {
+          // Safe to replace to trigger omnibox focus; remains ungrouped.
+          replaceBlankTabWithFresh(lastTab, { groupId: null });
+          return;
+        }
       }
+
+      // Either there was no tab, or the last tab was grouped (blank or not),
+      // or it was a non-blank tab. Create a brand new ungrouped tab at end.
+      chrome.tabs.create({ index: lastIndex + 1 });
     });
   } else if (command === 'add-tab-to-current-group') {
     if (tab.groupId > 0) {
