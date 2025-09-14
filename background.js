@@ -9,6 +9,23 @@ function isBlankTab(tab) {
          (tab.url.startsWith('chrome://newtab') && tab.title === 'New Tab');
 }
 
+// Helper function to close all blank tabs in the window except for a specified tab
+async function closeOtherBlankTabs(exceptTabId) {
+  try {
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+    const blankTabsToClose = allTabs.filter(tab => 
+      tab.id !== exceptTabId && isBlankTab(tab)
+    );
+    
+    if (blankTabsToClose.length > 0) {
+      const tabIds = blankTabsToClose.map(tab => tab.id);
+      await chrome.tabs.remove(tabIds);
+    }
+  } catch (error) {
+    // Silently ignore errors (e.g., if tabs are already closed)
+  }
+}
+
 // Replace a reusable blank tab with a *freshly created* new tab at the same logical spot.
 // This is the most reliable way to get Chrome to auto-select the omnibox.
 // Rationale: Simply re-activating an existing New Tab does not always re-select the URL bar
@@ -95,22 +112,26 @@ chrome.commands.onCommand.addListener((command, tab) => {
                          (tab.groupId <= 0 && tabAtPosition.groupId <= 0);
         
         if (isBlankTab(tabAtPosition) && sameGroup) {
-          await replaceBlankTabWithFresh(tabAtPosition, {
+          const newTab = await replaceBlankTabWithFresh(tabAtPosition, {
             groupId: tab.groupId > 0 ? tab.groupId : null,
           });
+          // Close other blank tabs after creating the new tab
+          await closeOtherBlankTabs(newTab ? newTab.id : null);
           return;
         }
       }
 
       // No suitable blank tab at position, create a new one
-      chrome.tabs.create({ index: targetIndex, pinned: false }, (newTab) => {
+      chrome.tabs.create({ index: targetIndex, pinned: false }, async (newTab) => {
         if (tab.groupId > 0) {
           chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
         }
+        // Close other blank tabs after creating the new tab
+        await closeOtherBlankTabs(newTab.id);
       });
     });
   } else if (command === 'open-tab-at-end') {
-    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+    chrome.tabs.query({ currentWindow: true }, async (tabs) => {
       const lastIndex = tabs.length - 1;
 
       // Debug logging
@@ -132,18 +153,22 @@ chrome.commands.onCommand.addListener((command, tab) => {
 
         if (isReusableBlank) {
           // Safe to replace to trigger omnibox focus; remains ungrouped.
-          replaceBlankTabWithFresh(lastTab, { groupId: null });
+          const newTab = await replaceBlankTabWithFresh(lastTab, { groupId: null });
+          // Close other blank tabs after creating the new tab
+          await closeOtherBlankTabs(newTab ? newTab.id : null);
           return;
         }
       }
 
       // Either there was no tab, or the last tab was grouped (blank or not),
       // or it was a non-blank tab. Create a brand new ungrouped tab at end.
-      chrome.tabs.create({ index: lastIndex + 1 });
+      const newTab = await chrome.tabs.create({ index: lastIndex + 1 });
+      // Close other blank tabs after creating the new tab
+      await closeOtherBlankTabs(newTab.id);
     });
   } else if (command === 'add-tab-to-current-group') {
     if (tab.groupId > 0) {
-      chrome.tabs.query({ currentWindow: true }, (allTabs) => {
+      chrome.tabs.query({ currentWindow: true }, async (allTabs) => {
         // Get all tabs in the current group
         const groupTabs = allTabs.filter(t => t.groupId === tab.groupId);
         const lastGroupTabIndex = Math.max(...groupTabs.map(t => t.index));
@@ -151,12 +176,16 @@ chrome.commands.onCommand.addListener((command, tab) => {
         
         // Check if the last tab in the group is already a blank tab
         if (isBlankTab(lastGroupTab)) {
-          replaceBlankTabWithFresh(lastGroupTab, { groupId: tab.groupId });
+          const newTab = await replaceBlankTabWithFresh(lastGroupTab, { groupId: tab.groupId });
+          // Close other blank tabs after creating the new tab
+          await closeOtherBlankTabs(newTab ? newTab.id : null);
         } else {
           // Create a new tab at the end of the group
           const targetIndex = lastGroupTabIndex + 1;
-          chrome.tabs.create({ index: targetIndex }, (newTab) => {
+          chrome.tabs.create({ index: targetIndex }, async (newTab) => {
             chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+            // Close other blank tabs after creating the new tab
+            await closeOtherBlankTabs(newTab.id);
           });
         }
       });
