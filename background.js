@@ -1,8 +1,8 @@
 // Helper function to check if a tab is blank (new tab)
 function isBlankTab(tab) {
   // Check for various forms of blank/new tab URLs
-  return tab.url === 'chrome://newtab/' || 
-         tab.url === 'about:blank' || 
+  return tab.url === 'chrome://newtab/' ||
+         tab.url === 'about:blank' ||
          tab.url === '' ||
          tab.url === 'chrome://newtab' ||
          tab.title === 'New Tab' ||
@@ -13,10 +13,10 @@ function isBlankTab(tab) {
 async function closeOtherBlankTabs(exceptTabId) {
   try {
     const allTabs = await chrome.tabs.query({ currentWindow: true });
-    const blankTabsToClose = allTabs.filter(tab => 
+    const blankTabsToClose = allTabs.filter(tab =>
       tab.id !== exceptTabId && isBlankTab(tab)
     );
-    
+
     if (blankTabsToClose.length > 0) {
       const tabIds = blankTabsToClose.map(tab => tab.id);
       await chrome.tabs.remove(tabIds);
@@ -52,7 +52,7 @@ async function replaceBlankTabWithFresh(blankTab, { groupId = null } = {}) {
 // Helper function to find or create a tab at a specific position
 async function findOrCreateTabAtPosition(targetIndex, options = {}) {
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  
+
   // Check if there's already a tab at the target position
   if (targetIndex < tabs.length) {
     const tabAtPosition = tabs[targetIndex];
@@ -62,12 +62,90 @@ async function findOrCreateTabAtPosition(targetIndex, options = {}) {
       return tabAtPosition;
     }
   }
-  
+
   // No blank tab at position, create a new one
   return chrome.tabs.create({ index: targetIndex, ...options });
 }
 
-chrome.commands.onCommand.addListener((command, tab) => {
+const LAST_ACTIVE_STORAGE_KEY = 'lastActiveTabHistory';
+const LEGACY_LAST_ACTIVE_KEY = 'lastActiveTabs';
+const MAX_LAST_ACTIVE_ENTRIES = 8;
+const ACTIVATION_CONFIRM_DELAY = 1000;
+
+function normalizeHistoryEntries(rawEntries) {
+  if (!Array.isArray(rawEntries)) return [];
+  const seen = new Set();
+  const normalized = [];
+
+  for (const entry of rawEntries) {
+    if (entry == null) continue;
+
+    if (typeof entry === 'number') {
+      if (seen.has(entry)) continue;
+      seen.add(entry);
+      normalized.push({ tabId: entry, windowId: null, lastActiveAt: 0 });
+      continue;
+    }
+
+    if (typeof entry === 'object') {
+      const tabId = typeof entry.tabId === 'number' ? entry.tabId : null;
+      if (tabId == null || seen.has(tabId)) continue;
+      seen.add(tabId);
+      normalized.push({
+        tabId,
+        windowId: typeof entry.windowId === 'number' ? entry.windowId : null,
+        lastActiveAt: typeof entry.lastActiveAt === 'number' ? entry.lastActiveAt : 0,
+      });
+    }
+  }
+
+  return normalized;
+}
+
+async function fetchLastActiveHistory() {
+  const data = await chrome.storage.local.get([LAST_ACTIVE_STORAGE_KEY, LEGACY_LAST_ACTIVE_KEY]);
+  let history = normalizeHistoryEntries(data[LAST_ACTIVE_STORAGE_KEY]);
+
+  if (!history.length && Array.isArray(data[LEGACY_LAST_ACTIVE_KEY])) {
+    history = normalizeHistoryEntries(data[LEGACY_LAST_ACTIVE_KEY]);
+    if (history.length) {
+      await chrome.storage.local.set({ [LAST_ACTIVE_STORAGE_KEY]: history });
+    }
+  }
+
+  return history;
+}
+
+async function storeLastActiveHistory(entries) {
+  await chrome.storage.local.set({
+    [LAST_ACTIVE_STORAGE_KEY]: entries.slice(0, MAX_LAST_ACTIVE_ENTRIES),
+  });
+}
+
+async function recordConfirmedActiveTab(tab) {
+  let history = await fetchLastActiveHistory();
+  history = history.filter((entry) => entry.tabId !== tab.id);
+  history.unshift({ tabId: tab.id, windowId: tab.windowId, lastActiveAt: Date.now() });
+  await storeLastActiveHistory(history);
+}
+
+async function removeTabFromHistory(tabId) {
+  const history = await fetchLastActiveHistory();
+  const filtered = history.filter((entry) => entry.tabId !== tabId);
+  if (filtered.length !== history.length) {
+    await storeLastActiveHistory(filtered);
+  }
+}
+
+async function safeGetTab(tabId) {
+  try {
+    return await chrome.tabs.get(tabId);
+  } catch (error) {
+    return null;
+  }
+}
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === 'duplicate-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
       tabs.forEach(tab => {
@@ -106,11 +184,11 @@ chrome.commands.onCommand.addListener((command, tab) => {
       const allTabs = await chrome.tabs.query({ currentWindow: true });
       if (targetIndex < allTabs.length) {
         const tabAtPosition = allTabs[targetIndex];
-        
+
         // Only reuse the blank tab if it's in the same group (or both are ungrouped)
-        const sameGroup = (tab.groupId === tabAtPosition.groupId) || 
+        const sameGroup = (tab.groupId === tabAtPosition.groupId) ||
                          (tab.groupId <= 0 && tabAtPosition.groupId <= 0);
-        
+
         if (isBlankTab(tabAtPosition) && sameGroup) {
           const newTab = await replaceBlankTabWithFresh(tabAtPosition, {
             groupId: tab.groupId > 0 ? tab.groupId : null,
@@ -173,7 +251,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
         const groupTabs = allTabs.filter(t => t.groupId === tab.groupId);
         const lastGroupTabIndex = Math.max(...groupTabs.map(t => t.index));
         const lastGroupTab = allTabs.find(t => t.index === lastGroupTabIndex);
-        
+
         // Check if the last tab in the group is already a blank tab
         if (isBlankTab(lastGroupTab)) {
           const newTab = await replaceBlankTabWithFresh(lastGroupTab, { groupId: tab.groupId });
@@ -198,7 +276,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
       chrome.windows.getCurrent((currentWindow) => {
         let currentIndex = windows.findIndex(w => w.id === currentWindow.id);
         let nextIndex = (currentIndex + 1) % windows.length;
-        
+
         chrome.windows.update(windows[nextIndex].id, { focused: true });
       });
     });
@@ -210,32 +288,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
       });
     });
   } else if (command === "switch-to-last-tab") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
-      if (activeTabs.length === 0) {
-        return; // No active tab, nothing to do
-      }
-      const currentActualTabId = activeTabs[0].id;
-
-      chrome.storage.local.get({ lastActiveTabs: [null, null] }, (data) => {
-        const [s0, s1] = data.lastActiveTabs; // s0 is "current" from storage, s1 is "previous"
-
-        let targetTabId = null;
-        if (currentActualTabId === s0) {
-          // Current actual tab is the one that was last confirmed as active for >3s.
-          // So, we want to switch to the one *before* it in the confirmed history.
-          targetTabId = s1;
-        } else {
-          // Current actual tab is "newer" than s0 (switched to it <3s ago).
-          // So, s0 is the tab we were just on, making it the target for a toggle.
-          targetTabId = s0;
-        }
-
-        if (targetTabId) {
-          // chrome.tabs.update will do nothing if targetTabId is the same as currentActualTabId.
-          chrome.tabs.update(targetTabId, { active: true });
-        }
-      });
-    });
+    await handleSwitchToLastTab();
   } else if (command === 'copy-url') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
@@ -251,21 +304,21 @@ chrome.commands.onCommand.addListener((command, tab) => {
   } else if (command === 'move-tabs-to-window') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (highlightedTabs) => {
       if (highlightedTabs.length === 0) return;
-      
+
       chrome.windows.getAll({ populate: false, windowTypes: ["normal"] }, (windows) => {
         if (windows.length < 2) return; // Need at least 2 windows to move tabs
-        
+
         chrome.windows.getCurrent((currentWindow) => {
           // Find current window index
           let currentIndex = windows.findIndex(w => w.id === currentWindow.id);
           // Calculate next window index (cycle)
           let nextIndex = (currentIndex + 1) % windows.length;
           let targetWindow = windows[nextIndex];
-          
+
           // Move tabs to target window first
           const tabIds = highlightedTabs.map(tab => tab.id);
           const firstTabId = tabIds[0]; // Store the first tab ID to activate
-          
+
           chrome.tabs.move(tabIds, { windowId: targetWindow.id, index: -1 }, () => {
             // Focus the target window first
             chrome.windows.update(targetWindow.id, { focused: true }, () => {
@@ -280,7 +333,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
                       movedTabIndices.push(tab.index);
                     }
                   });
-                  
+
                   // Highlight all moved tabs by their indices
                   if (movedTabIndices.length > 0) {
                     chrome.tabs.highlight({
@@ -300,6 +353,21 @@ chrome.commands.onCommand.addListener((command, tab) => {
     });
   } else if (command === 'move-all-groups') {
     handleMoveAllGroups();
+  } else if (command === 'go-home') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length > 0) {
+        const currentTab = tabs[0];
+        try {
+          const url = new URL(currentTab.url);
+          const homeUrl = url.origin + '/';
+          if (currentTab.url !== homeUrl) {
+            chrome.tabs.update(currentTab.id, { url: homeUrl });
+          }
+        } catch (e) {
+          // Invalid URL, ignore
+        }
+      }
+    });
   }
 });
 
@@ -307,41 +375,51 @@ chrome.commands.onCommand.addListener((command, tab) => {
 let tabActivationTimer = null;
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  const activatedTabId = activeInfo.tabId; // Capture tabId for this specific event to use in the timeout
+  const activatedTabId = activeInfo.tabId;
 
-  // Clear any existing timer to ensure only the latest activation is processed
   if (tabActivationTimer) {
     clearTimeout(tabActivationTimer);
   }
-  
-  tabActivationTimer = setTimeout(() => {
-    // This callback executes only if no other tab was activated for 3 seconds.
-    // Confirm that 'activatedTabId' (the tab that started this timer) is still the active tab.
-    chrome.tabs.query({ active: true, currentWindow: true }, (currentTabs) => {
-      if (currentTabs.length > 0 && currentTabs[0].id === activatedTabId) {
-        // The tab 'activatedTabId' has indeed remained active for 3 seconds.
-        // Now, update the lastActiveTabs in storage.
-        chrome.storage.local.get({ lastActiveTabs: [null, null] }, (data) => {
-          let storedLastActiveTabs = data.lastActiveTabs; // Format: [currentTabId, previousTabId]
-          
-          // If the tab that just got confirmed (activatedTabId) is different from the
-          // one currently stored as the 'most recent' (storedLastActiveTabs[0]),
-          // then we need to update the list.
-          if (storedLastActiveTabs[0] !== activatedTabId) {
-            // The new 'most recent' is activatedTabId.
-            // The new 'second most recent' (previous) is the old 'most recent' (storedLastActiveTabs[0]).
-            const updatedTabs = [activatedTabId, storedLastActiveTabs[0]];
-            chrome.storage.local.set({ lastActiveTabs: updatedTabs });
-          }
-          // If storedLastActiveTabs[0] is already activatedTabId, it means this tab
-          // was already considered the most recent, and it just re-confirmed its status.
-          // In this scenario, the [current, previous] order in storage is still correct,
-          // and no update to chrome.storage.local is necessary.
-        });
+
+  tabActivationTimer = setTimeout(async () => {
+    try {
+      const tab = await safeGetTab(activatedTabId);
+      if (!tab || !tab.active) {
+        return;
       }
-    });
-    tabActivationTimer = null; // The timer has completed its execution path, so clear its ID.
-  }, 1000); // 1.5 seconds delay
+      await recordConfirmedActiveTab(tab);
+    } finally {
+      tabActivationTimer = null;
+    }
+  }, ACTIVATION_CONFIRM_DELAY);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  removeTabFromHistory(tabId).catch(() => {});
+});
+
+// Track window focus changes to record cross-window tab switches
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+
+  // Clear any pending same-window activation timer since we're switching windows
+  if (tabActivationTimer) {
+    clearTimeout(tabActivationTimer);
+    tabActivationTimer = null;
+  }
+
+  // Start a new timer for the active tab in the newly focused window
+  tabActivationTimer = setTimeout(async () => {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, windowId });
+      if (tabs.length === 0) return;
+      const tab = tabs[0];
+      if (!tab.active) return;
+      await recordConfirmedActiveTab(tab);
+    } finally {
+      tabActivationTimer = null;
+    }
+  }, ACTIVATION_CONFIRM_DELAY);
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
@@ -448,7 +526,7 @@ async function handleMoveToFront(highlightedTabs) {
   const firstHighlightedTab = highlightedTabs[0];
   const tabIds = highlightedTabs.map(tab => tab.id);
   const isTabInGroup = firstHighlightedTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
-  
+
   // Get the last action from storage to detect consecutive calls
   const { lastAction } = await chrome.storage.local.get({ lastAction: null });
   const currentAction = {
@@ -456,13 +534,13 @@ async function handleMoveToFront(highlightedTabs) {
     tabIds: tabIds,
     timestamp: Date.now()
   };
-  
+
   // Check if this is a consecutive call (within 2 seconds) with the same tabs
-  const isConsecutiveCall = lastAction && 
+  const isConsecutiveCall = lastAction &&
     lastAction.command === 'move-tabs-to-front' &&
     Date.now() - lastAction.timestamp < 2000 &&
     arraysEqual(lastAction.tabIds, tabIds);
-  
+
   if (firstHighlightedTab.pinned) {
     // If tabs are already pinned, just move them to the front of pinned tabs
     moveTabs(highlightedTabs, 0, 'move-tabs-to-front');
@@ -470,10 +548,10 @@ async function handleMoveToFront(highlightedTabs) {
     // Handle grouped tabs
     const groupTabs = allTabs.filter(tab => tab.groupId === firstHighlightedTab.groupId);
     const firstGroupTabIndex = Math.min(...groupTabs.map(tab => tab.index));
-    
+
     // Check if tabs are already at the front of the group
     const isAtFrontOfGroup = highlightedTabs.every((tab, i) => tab.index === firstGroupTabIndex + i);
-    
+
     if (isAtFrontOfGroup && isConsecutiveCall) {
       // Second call: ungroup tabs without moving them
       chrome.tabs.ungroup(tabIds);
@@ -486,7 +564,7 @@ async function handleMoveToFront(highlightedTabs) {
     // Check if tabs are already at the front (right after pinned tabs)
     const expectedIndex = pinnedTabs.length;
     const isAtFront = highlightedTabs.every((tab, i) => tab.index === expectedIndex + i);
-    
+
     if (isAtFront && isConsecutiveCall) {
       // Second call: pin the tabs
       for (const tabId of tabIds) {
@@ -498,7 +576,7 @@ async function handleMoveToFront(highlightedTabs) {
       moveTabs(highlightedTabs, offset, 'move-tabs-to-front');
     }
   }
-  
+
   // Store the current action
   await chrome.storage.local.set({ lastAction: currentAction });
 }
@@ -509,7 +587,7 @@ async function handleMoveToBack(highlightedTabs) {
   const firstHighlightedTab = highlightedTabs[0];
   const tabIds = highlightedTabs.map(tab => tab.id);
   const isTabInGroup = firstHighlightedTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
-  
+
   // Get the last action from storage to detect consecutive calls
   const { lastAction } = await chrome.storage.local.get({ lastAction: null });
   const currentAction = {
@@ -517,21 +595,21 @@ async function handleMoveToBack(highlightedTabs) {
     tabIds: tabIds,
     timestamp: Date.now()
   };
-  
+
   // Check if this is a consecutive call (within 2 seconds) with the same tabs
-  const isConsecutiveCall = lastAction && 
+  const isConsecutiveCall = lastAction &&
     lastAction.command === 'move-tabs-to-back' &&
     Date.now() - lastAction.timestamp < 2000 &&
     arraysEqual(lastAction.tabIds, tabIds);
-  
+
   if (firstHighlightedTab.pinned) {
     // Check if pinned tabs are already at the end of pinned tabs
     const pinnedTabs = allTabs.filter(tab => tab.pinned);
     const lastPinnedIndex = pinnedTabs.length - 1;
-    const isAtEndOfPinned = highlightedTabs.every((tab, i) => 
+    const isAtEndOfPinned = highlightedTabs.every((tab, i) =>
       tab.index === lastPinnedIndex - (highlightedTabs.length - 1) + i
     );
-    
+
     if (isAtEndOfPinned && isConsecutiveCall) {
       // Second call: unpin the tabs
       for (const tabId of tabIds.reverse()) {
@@ -547,12 +625,12 @@ async function handleMoveToBack(highlightedTabs) {
     // Handle grouped tabs
     const groupTabs = allTabs.filter(tab => tab.groupId === firstHighlightedTab.groupId);
     const lastGroupTabIndex = Math.max(...groupTabs.map(tab => tab.index));
-    
+
     // Check if tabs are already at the back of the group
-    const isAtBackOfGroup = highlightedTabs.every((tab, i) => 
+    const isAtBackOfGroup = highlightedTabs.every((tab, i) =>
       tab.index === lastGroupTabIndex - (highlightedTabs.length - 1) + i
     );
-    
+
     if (isAtBackOfGroup && isConsecutiveCall) {
       // Second call: ungroup tabs without moving them
       chrome.tabs.ungroup(tabIds);
@@ -565,7 +643,7 @@ async function handleMoveToBack(highlightedTabs) {
     // Handle ungrouped tabs - just move to the back
     moveTabs(highlightedTabs, -1, 'move-tabs-to-back');
   }
-  
+
   // Store the current action
   await chrome.storage.local.set({ lastAction: currentAction });
 }
@@ -574,56 +652,56 @@ async function handleMoveToBack(highlightedTabs) {
 async function handleMoveAllGroups() {
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   const groups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
-  
+
   if (groups.length === 0) {
     return; // No groups to move
   }
-  
+
   // Get all tabs that are in groups
   const groupedTabs = allTabs.filter(tab => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
   const ungroupedTabs = allTabs.filter(tab => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE);
   const pinnedTabs = allTabs.filter(tab => tab.pinned);
-  
+
   if (groupedTabs.length === 0) {
     return; // No grouped tabs to move
   }
-  
+
   // Get the last action from storage to detect consecutive calls
   const { lastAction } = await chrome.storage.local.get({ lastAction: null });
   const currentAction = {
     command: 'move-all-groups',
     timestamp: Date.now()
   };
-  
+
   // Check if this is a consecutive call (within 2 seconds)
-  const isConsecutiveCall = lastAction && 
+  const isConsecutiveCall = lastAction &&
     lastAction.command === 'move-all-groups' &&
     Date.now() - lastAction.timestamp < 2000;
-  
+
   // Check if all groups are at the front (right after pinned tabs)
   const firstGroupedIndex = Math.min(...groupedTabs.map(tab => tab.index));
   const lastGroupedIndex = Math.max(...groupedTabs.map(tab => tab.index));
   const allGroupsAtFront = firstGroupedIndex === pinnedTabs.length;
-  
+
   // Check if all groups are at the back (no ungrouped tabs after them)
   const lastUngroupedIndex = Math.max(...ungroupedTabs.map(tab => tab.index), -1);
   const allGroupsAtBack = lastGroupedIndex > lastUngroupedIndex;
-  
+
   // Decide whether to move to front or back
   // Default is to move to back, unless groups are already at back
   const moveToFront = allGroupsAtBack;
-  
+
   if (moveToFront) {
     // Move all groups to the front (after pinned tabs)
     const targetIndex = pinnedTabs.length;
-    
+
     // Sort groups by their current position to maintain relative order
     const sortedGroups = groups.sort((a, b) => {
       const aFirstTab = groupedTabs.find(tab => tab.groupId === a.id);
       const bFirstTab = groupedTabs.find(tab => tab.groupId === b.id);
       return aFirstTab.index - bFirstTab.index;
     });
-    
+
     // Move groups in reverse order so they end up in the correct order
     // When we move to the same index, each group gets inserted at that position,
     // pushing previously moved groups to the right
@@ -639,7 +717,7 @@ async function handleMoveAllGroups() {
       const bFirstTab = groupedTabs.find(tab => tab.groupId === b.id);
       return aFirstTab.index - bFirstTab.index;
     });
-    
+
     // Move groups to the end in forward order to maintain their relative positions
     // When using index: -1, each group gets appended to the end, so we move in forward order
     for (let i = 0; i < sortedGroups.length; i++) {
@@ -647,9 +725,57 @@ async function handleMoveAllGroups() {
       await chrome.tabGroups.move(group.id, { index: -1 });
     }
   }
-  
+
   // Store the current action
   await chrome.storage.local.set({ lastAction: currentAction });
+}
+
+async function handleSwitchToLastTab() {
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const activeTab = activeTabs[0];
+  if (!activeTab) return;
+
+  const history = await fetchLastActiveHistory();
+  if (!history.length) return;
+
+  const validatedEntries = [];
+  for (const entry of history) {
+    const tab = await safeGetTab(entry.tabId);
+    if (!tab) continue;
+    validatedEntries.push({
+      tab,
+      entry: {
+        tabId: tab.id,
+        windowId: tab.windowId,
+        lastActiveAt: entry.lastActiveAt || 0,
+      },
+    });
+  }
+
+  if (!validatedEntries.length) {
+    await storeLastActiveHistory([]);
+    return;
+  }
+
+  await storeLastActiveHistory(validatedEntries.map((item) => item.entry));
+
+  const currentIndex = validatedEntries.findIndex((item) => item.tab.id === activeTab.id);
+  let targetRecord = null;
+
+  if (currentIndex === 0) {
+    targetRecord = validatedEntries[1];
+  } else if (currentIndex > 0) {
+    targetRecord = validatedEntries[0];
+  } else {
+    targetRecord = validatedEntries[0];
+  }
+
+  if (!targetRecord || targetRecord.tab.id === activeTab.id) {
+    return;
+  }
+
+  await chrome.windows.update(targetRecord.tab.windowId, { focused: true });
+  await chrome.tabs.update(targetRecord.tab.id, { active: true });
 }
 
 // Helper function to compare arrays

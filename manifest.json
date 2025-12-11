@@ -60,6 +60,9 @@
     },
     "move-all-groups": {
       "description": "Move all groups to front or back"
+    },
+    "go-home": {
+      "description": "Navigate to the root/home of the current site"
     }
   },
   "action": {
