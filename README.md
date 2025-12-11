@@ -20,4 +20,5 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Toggle collapse all groups:                   Ctrl + G
 - Move all groups to front/back:                Alt + Shift + G
 - Copy current tab URL to clipboard:            Ctrl + Shift + C
+- Go to home page of site:                      Ctrl + Shift + H
 ```
