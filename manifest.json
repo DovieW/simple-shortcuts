@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.3.2",
+  "version": "0.4.0",
   "name": "Simple Shortcuts",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
