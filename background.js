@@ -802,6 +802,8 @@ async function handlePauseOrShowAudioTabs() {
     audibleTabs.map(async (tab) => {
       try {
         // Inject a script to pause all audio and video elements
+        // Note: This only works for HTML5 <audio> and <video> elements.
+        // It cannot pause Web Audio API, WebRTC, or embedded Flash content.
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
@@ -817,7 +819,7 @@ async function handlePauseOrShowAudioTabs() {
           }
         });
         // Check if any media was actually paused
-        return results && results[0] && results[0].result === true;
+        return results?.[0]?.result === true;
       } catch (error) {
         // Script injection failed (e.g., chrome:// or other protected pages)
         return false;
