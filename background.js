@@ -368,6 +368,8 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         }
       }
     });
+  } else if (command === 'pause-or-show-audio-tabs') {
+    await handlePauseOrShowAudioTabs();
   }
 });
 
@@ -782,4 +784,49 @@ async function handleSwitchToLastTab() {
 function arraysEqual(a, b) {
   if (a.length !== b.length) return false;
   return a.every((val, i) => val === b[i]);
+}
+
+// Handle pause or show audio tabs command
+async function handlePauseOrShowAudioTabs() {
+  // Query all tabs to find those playing audio
+  const allTabs = await chrome.tabs.query({});
+  const audibleTabs = allTabs.filter(tab => tab.audible);
+
+  if (audibleTabs.length === 0) {
+    // No tabs are playing audio, do nothing
+    return;
+  }
+
+  // Try to pause audio in all audible tabs
+  let pausedCount = 0;
+  for (const tab of audibleTabs) {
+    try {
+      // Inject a script to pause all audio and video elements
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const mediaElements = document.querySelectorAll('audio, video');
+          let paused = false;
+          mediaElements.forEach(el => {
+            if (!el.paused) {
+              el.pause();
+              paused = true;
+            }
+          });
+          return paused;
+        }
+      });
+      pausedCount++;
+    } catch (error) {
+      // Script injection failed (e.g., chrome:// or other protected pages)
+      // Continue to next tab
+    }
+  }
+
+  // If we couldn't pause any tabs, switch to the first audible tab to show it to the user
+  if (pausedCount === 0 && audibleTabs.length > 0) {
+    const firstAudibleTab = audibleTabs[0];
+    await chrome.windows.update(firstAudibleTab.windowId, { focused: true });
+    await chrome.tabs.update(firstAudibleTab.id, { active: true });
+  }
 }
