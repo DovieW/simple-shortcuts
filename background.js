@@ -368,6 +368,8 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         }
       }
     });
+  } else if (command === 'pause-or-show-audio-tabs') {
+    await handlePauseOrShowAudioTabs();
   }
 });
 
@@ -782,4 +784,58 @@ async function handleSwitchToLastTab() {
 function arraysEqual(a, b) {
   if (a.length !== b.length) return false;
   return a.every((val, i) => val === b[i]);
+}
+
+// Handle pause or show audio tabs command
+async function handlePauseOrShowAudioTabs() {
+  // Query all tabs to find those playing audio
+  const allTabs = await chrome.tabs.query({});
+  const audibleTabs = allTabs.filter(tab => tab.audible);
+
+  if (audibleTabs.length === 0) {
+    // No tabs are playing audio, do nothing
+    return;
+  }
+
+  // Try to pause audio in all audible tabs in parallel
+  const pauseResults = await Promise.allSettled(
+    audibleTabs.map(async (tab) => {
+      try {
+        // Inject a script to pause all audio and video elements
+        // Note: This only works for HTML5 <audio> and <video> elements.
+        // It cannot pause Web Audio API, WebRTC, or embedded Flash content.
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const mediaElements = document.querySelectorAll('audio, video');
+            let paused = false;
+            mediaElements.forEach(el => {
+              if (!el.paused) {
+                el.pause();
+                paused = true;
+              }
+            });
+            return paused;
+          }
+        });
+        // Check if any media was actually paused
+        return results?.[0]?.result === true;
+      } catch (error) {
+        // Script injection failed (e.g., chrome:// or other protected pages)
+        return false;
+      }
+    })
+  );
+
+  // Count how many tabs actually had media paused
+  const pausedCount = pauseResults.filter(
+    result => result.status === 'fulfilled' && result.value === true
+  ).length;
+
+  // If we couldn't pause any tabs, switch to the first audible tab to show it to the user
+  if (pausedCount === 0 && audibleTabs.length > 0) {
+    const firstAudibleTab = audibleTabs[0];
+    await chrome.windows.update(firstAudibleTab.windowId, { focused: true });
+    await chrome.tabs.update(firstAudibleTab.id, { active: true });
+  }
 }
