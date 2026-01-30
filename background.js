@@ -151,11 +151,15 @@ async function focusLastActiveWindow() {
       windowTypes: ['normal'],
       includeIncognito: true,
     });
-    if (lastFocusedWindow && lastFocusedWindow.id != null) {
+    if (lastFocusedWindow && typeof lastFocusedWindow.id === 'number') {
       await chrome.windows.update(lastFocusedWindow.id, { focused: true });
     }
   } catch (error) {
-    // Ignore errors when no windows are available.
+    const message = error && typeof error === 'object' ? error.message : '';
+    if (message && message.includes('No window')) {
+      return;
+    }
+    console.warn('Failed to focus last active window:', error);
   }
 }
 
@@ -438,7 +442,6 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
-  await focusLastActiveWindow();
   const MOVE_LEFT = 'move-tabs-left';
   const MOVE_RIGHT = 'move-tabs-right';
   const MOVE_FRONT = 'move-tabs-to-front';
