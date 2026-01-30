@@ -754,11 +754,21 @@ async function handleSwitchToLastTab() {
   const history = await fetchLastActiveHistory();
   if (!history.length) return;
 
+  const windowTrackingCache = new Map();
+  const isWindowTracked = async (windowId) => {
+    if (windowTrackingCache.has(windowId)) {
+      return windowTrackingCache.get(windowId);
+    }
+    const tracked = await shouldTrackWindow(windowId);
+    windowTrackingCache.set(windowId, tracked);
+    return tracked;
+  };
+
   const validatedEntries = [];
   for (const entry of history) {
     const tab = await safeGetTab(entry.tabId);
     if (!tab) continue;
-    if (!(await shouldTrackWindow(tab.windowId))) {
+    if (!(await isWindowTracked(tab.windowId))) {
       continue;
     }
     validatedEntries.push({
