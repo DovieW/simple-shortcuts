@@ -145,7 +145,22 @@ async function safeGetTab(tabId) {
   }
 }
 
+async function focusLastActiveWindow() {
+  try {
+    const lastFocusedWindow = await chrome.windows.getLastFocused({
+      windowTypes: ['normal'],
+      includeIncognito: true,
+    });
+    if (lastFocusedWindow && lastFocusedWindow.id != null) {
+      await chrome.windows.update(lastFocusedWindow.id, { focused: true });
+    }
+  } catch (error) {
+    // Ignore errors when no windows are available.
+  }
+}
+
 chrome.commands.onCommand.addListener(async (command, tab) => {
+  await focusLastActiveWindow();
   if (command === 'duplicate-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
       tabs.forEach(tab => {
@@ -423,6 +438,7 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 });
 
 chrome.commands.onCommand.addListener(async (cmd) => {
+  await focusLastActiveWindow();
   const MOVE_LEFT = 'move-tabs-left';
   const MOVE_RIGHT = 'move-tabs-right';
   const MOVE_FRONT = 'move-tabs-to-front';
