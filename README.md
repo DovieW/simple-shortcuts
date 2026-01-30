@@ -7,7 +7,7 @@ Currently adds these shortcuts with these default/suggested keymaps:
 - Duplicate tab(s):                             Alt + Shift + D
 - Open tab(s) in incognito:                     Alt + Shift + N
 - Pin tab(s):                                   Alt + Shift + Z
-- Open new tab near current and in same group:  Ctrl + E
+- Open new tab near current and in same group:  Ctrl + K
 - Open new tab at the end of the current group: Ctrl + Shift + G
 - Open new tab at the end of all tabs:          Ctrl + Shift + E
 - Move tab(s) right:                            Alt + Shift + Right (or L)
