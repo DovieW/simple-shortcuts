@@ -1,12 +1,18 @@
 // Helper function to check if a tab is blank (new tab)
 function isBlankTab(tab) {
+  if (tab.status === 'loading') {
+    return false;
+  }
+
+  const url = tab.url || '';
+
   // Check for various forms of blank/new tab URLs
-  return tab.url === 'chrome://newtab/' ||
-         tab.url === 'about:blank' ||
-         tab.url === '' ||
-         tab.url === 'chrome://newtab' ||
+  return url === 'chrome://newtab/' ||
+         url === 'about:blank' ||
+         url === '' ||
+         url === 'chrome://newtab' ||
          tab.title === 'New Tab' ||
-         (tab.url.startsWith('chrome://newtab') && tab.title === 'New Tab');
+         (url.startsWith('chrome://newtab') && tab.title === 'New Tab');
 }
 
 // Helper function to close all blank tabs in the window except for a specified tab
