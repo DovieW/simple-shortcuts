@@ -14,7 +14,10 @@ const commandDescriptions = {
   'toggle-collapse-groups': 'Toggle collapse all tab groups',
   'switch-to-last-tab': 'Switch to the last active tab',
   'copy-url': 'Copy current tab URL to clipboard',
-  'move-tabs-to-window': 'Move highlighted tab(s) to different window (cycle)'
+  'move-tabs-to-window': 'Move highlighted tab(s) to different window (cycle)',
+  'move-all-groups': 'Move all groups to front or back',
+  'go-home': 'Navigate to the root/home of the current site',
+  'pause-or-show-audio-tabs': 'Pause all tabs or show tabs playing audio'
 };
 
 // Format shortcut keys for display
