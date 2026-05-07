@@ -23,6 +23,7 @@
       "description": "Open the current tab(s) in incognito"
     },
     "open-tab-near": {
+      "suggested_key": "Ctrl+K",
       "description": "Open tab near current and in same group"
     },
     "add-tab-to-current-group": {
