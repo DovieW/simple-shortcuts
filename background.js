@@ -151,7 +151,26 @@ async function safeGetTab(tabId) {
   }
 }
 
+async function focusLastActiveWindow() {
+  try {
+    const lastFocusedWindow = await chrome.windows.getLastFocused({
+      windowTypes: ['normal'],
+      includeIncognito: true,
+    });
+    if (lastFocusedWindow && typeof lastFocusedWindow.id === 'number') {
+      await chrome.windows.update(lastFocusedWindow.id, { focused: true });
+    }
+  } catch (error) {
+    const message = error && typeof error === 'object' ? error.message : '';
+    if (message && message.includes('No window')) {
+      return;
+    }
+    console.warn('Failed to focus last active window:', error);
+  }
+}
+
 chrome.commands.onCommand.addListener(async (command, tab) => {
+  await focusLastActiveWindow();
   if (command === 'duplicate-tab') {
     chrome.tabs.query({ highlighted: true, currentWindow: true }, (tabs) => {
       tabs.forEach(tab => {
