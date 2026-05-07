@@ -129,6 +129,9 @@ async function storeLastActiveHistory(entries) {
 }
 
 async function recordConfirmedActiveTab(tab) {
+  if (!(await shouldTrackWindow(tab.windowId))) {
+    return;
+  }
   let history = await fetchLastActiveHistory();
   history = history.filter((entry) => entry.tabId !== tab.id);
   history.unshift({ tabId: tab.id, windowId: tab.windowId, lastActiveAt: Date.now() });
@@ -149,6 +152,19 @@ async function safeGetTab(tabId) {
   } catch (error) {
     return null;
   }
+}
+
+async function safeGetWindow(windowId) {
+  try {
+    return await chrome.windows.get(windowId);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function shouldTrackWindow(windowId) {
+  const window = await safeGetWindow(windowId);
+  return window ? window.type !== 'app' : false;
 }
 
 chrome.commands.onCommand.addListener(async (command, tab) => {
@@ -744,10 +760,23 @@ async function handleSwitchToLastTab() {
   const history = await fetchLastActiveHistory();
   if (!history.length) return;
 
+  const windowTrackingCache = new Map();
+  const isWindowTracked = async (windowId) => {
+    if (windowTrackingCache.has(windowId)) {
+      return windowTrackingCache.get(windowId);
+    }
+    const tracked = await shouldTrackWindow(windowId);
+    windowTrackingCache.set(windowId, tracked);
+    return tracked;
+  };
+
   const validatedEntries = [];
   for (const entry of history) {
     const tab = await safeGetTab(entry.tabId);
     if (!tab) continue;
+    if (!(await isWindowTracked(tab.windowId))) {
+      continue;
+    }
     validatedEntries.push({
       tab,
       entry: {
