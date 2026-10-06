@@ -42,4 +42,4 @@ No analytics, advertising, remote scripts, or developer-operated data servers. T
 Requires Chrome 116 or newer.
 Open source: https://github.com/DovieW/simple-shortcuts
 Support: https://github.com/DovieW/simple-shortcuts/issues
-Privacy policy: https://github.com/DovieW/simple-shortcuts/blob/master/PRIVACY.md
+Privacy policy: https://github.com/DovieW/simple-shortcuts/blob/12ad8b4683298d98794ed0813cb3c041b1997e0a/PRIVACY.md
