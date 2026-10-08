@@ -83,6 +83,8 @@ Set a command's scope to **Global** in Chrome's shortcut settings if you want to
 
 Last-tab history records activations immediately and survives extension worker suspension. Closing several tabs removes them from history; switching also checks that each candidate still exists and selects the most recently used surviving tab. If the active tab closes, Chrome chooses a replacement and the shortcut switches from that replacement to the previous surviving tab. If no other remembered tab remains, it reports that without changing tabs. History retains up to 32 tab entries. It is stored in memory for the current browser session and discarded on browser restart or extension reload. Window cycling, cross-window moves, last-tab switching, and media controls stay within the current normal window's regular/incognito context. Enable the extension in incognito in Chrome if needed.
 
+The **New tab near current** command creates a new tab; it does not focus the current tab’s address bar. Assign its key manually in Chrome’s shortcut settings.
+
 Chrome extensions cannot focus the existing address bar or remap F6. Use Ctrl+L (Cmd+L on macOS). To use Ctrl+K instead, configure your desktop key-remapping tool to send Ctrl+L while Chrome is focused. Issue #34 was closed as not planned for this browser API limitation.
 
 ## Media and permissions
