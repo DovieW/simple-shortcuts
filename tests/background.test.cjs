@@ -161,6 +161,46 @@ test('recent-tab walk traverses a stable list, skips closed tabs, and stops with
   assert.equal(h.tabs.find(tab => tab.active).id, 1);
 });
 
+test('recent-tab walk reverses direction without reordering and stops at both ends', async () => {
+  const h = createHarness({ tabs: [1, 2, 3, 4].map(id => ({ id, active: id === 1 })) });
+  for (const id of [1, 2, 3, 4]) await h.activate(id);
+  await assert.rejects(h.run('walk-recent-tabs-forward'), { code: 'history_start' });
+  const steps = [ ['walk-recent-tabs', 3], ['walk-recent-tabs', 2], ['walk-recent-tabs-forward', 3], ['walk-recent-tabs', 2], ['walk-recent-tabs', 1] ];
+  for (const [command, expected] of steps) {
+    await h.run(command); await h.drain();
+    assert.equal(h.tabs.find(tab => tab.active).id, expected);
+    assert.deepEqual(h.session.tabHistoryWalk.ids, [4, 3, 2, 1]);
+  }
+  await assert.rejects(h.run('walk-recent-tabs'), { code: 'history_end' });
+  for (const expected of [2, 3, 4]) {
+    await h.run('walk-recent-tabs-forward'); await h.drain();
+    assert.equal(h.tabs.find(tab => tab.active).id, expected);
+  }
+  await assert.rejects(h.run('walk-recent-tabs-forward'), { code: 'history_start' });
+  assert.equal(h.tabs.find(tab => tab.active).id, 4);
+  await h.run('walk-recent-tabs'); await h.drain();
+  assert.equal(h.tabs.find(tab => tab.active).id, 3);
+});
+
+test('newer recent tab skips closed entries after restart and accepts an old end cursor', async () => {
+  const h = createHarness({ tabs: [{ id: 1, active: true }, { id: 3 }, { id: 4 }], session: { tabHistory: [1, 3, 4].map(tabId => ({ tabId })), tabHistoryWalk: { ids: [4, 3, 2, 1], index: 4, currentTabId: 1, incognito: false } } });
+  await h.run('walk-recent-tabs-forward'); await h.drain();
+  assert.equal(h.tabs.find(tab => tab.active).id, 3);
+  await h.run('walk-recent-tabs-forward'); await h.drain();
+  assert.equal(h.tabs.find(tab => tab.active).id, 4);
+});
+
+test('rapid mixed history directions share a stable cursor and newer resets after manual selection', async () => {
+  const h = createHarness({ tabs: [1, 2, 3, 4].map(id => ({ id, active: id === 1 })) });
+  for (const id of [1, 2, 3, 4]) await h.activate(id);
+  await Promise.all(['walk-recent-tabs', 'walk-recent-tabs', 'walk-recent-tabs-forward', 'walk-recent-tabs', 'walk-recent-tabs-forward', 'walk-recent-tabs-forward'].map(command => h.run(command)));
+  await h.drain();
+  assert.equal(h.tabs.find(tab => tab.active).id, 4);
+  await h.activate(1);
+  await assert.rejects(h.run('walk-recent-tabs-forward'), { code: 'history_start' });
+  assert.equal(h.tabs.find(tab => tab.active).id, 1);
+});
+
 test('recent-tab walk resets after manual selection or last-active toggle', async () => {
   const h = createHarness({ tabs: [1, 2, 3, 4].map(id => ({ id, active: id === 1 })) });
   for (const id of [1, 2, 3, 4]) await h.activate(id);
@@ -184,6 +224,10 @@ test('recent-tab walk preserves cursor across worker restart and excludes privat
   const restarted = createHarness({ windows: h.windows, tabs: h.tabs, groups: h.groups, session: h.session });
   await restarted.run('walk-recent-tabs'); await restarted.drain();
   assert.equal(restarted.session.tabHistoryWalk.currentTabId, 5);
+  await restarted.run('walk-recent-tabs-forward'); await restarted.drain();
+  assert.equal(restarted.session.tabHistoryWalk.currentTabId, 4);
+  await restarted.run('walk-recent-tabs-forward'); await restarted.drain();
+  assert.equal(restarted.session.tabHistoryWalk.currentTabId, 1);
 });
 
 test('rapid recent-tab walk stops at the 32-entry limit', async () => {

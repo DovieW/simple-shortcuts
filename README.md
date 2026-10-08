@@ -8,7 +8,7 @@ Keyboard shortcuts for tabs, groups, windows, navigation, and media. Requires Ch
 
 Open the extension popup and click **Edit keys**, or visit `chrome://extensions/shortcuts`. The popup shows your actual assignments, lets you search commands, and lists missing or changed bindings against a saved snapshot. The rows are read-only; assign keys in Chrome's shortcut settings.
 
-This README describes version **0.5.0**. To install a [GitHub release](https://github.com/DovieW/simple-shortcuts/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. You can also load this source directory. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
+This README describes the current source; see [the changelog](CHANGELOG.md) for released and unreleased changes. To install a [GitHub release](https://github.com/DovieW/simple-shortcuts/releases), extract its extension ZIP, enable **Developer mode** at `chrome://extensions`, choose **Load unpacked**, and select the extracted directory. You can also load this source directory. After updating the files, click the extension's reload button there. An unpacked copy can have different shortcut assignments from the installed Web Store version. GitHub releases and Chrome Web Store publication are separate; the store version may lag.
 
 Four shortcuts are suggested by the extension on installation. Chrome can assign them differently or leave them unset if they conflict with existing shortcuts. Everything else below is a recommendation you must assign yourself. Chrome allows at most four suggested shortcuts in an extension manifest.
 
@@ -25,6 +25,7 @@ Four shortcuts are suggested by the extension on installation. Chrome can assign
 | Move highlighted tabs to front / back | | Alt+Shift+Up / Down |
 | Switch to last active tab | | Alt+A |
 | Walk backward through recently used tabs | | Choose an unused key |
+| Walk forward toward newer tabs in the same history | | Choose an unused key |
 | Cycle normal windows | | Alt+Shift+A |
 | Move highlighted tabs to the next normal window | | Ctrl+Shift+A |
 | Toggle collapse all groups in this window | | Ctrl+G |
@@ -70,11 +71,11 @@ Chrome's Commands API can read assignments but cannot set them or report whether
 
 ## Walk recent tab history
 
-Assign **Walk backward through recently used tabs (up to 32)** in **Edit keys**. The popup calls it **Older recent tab**. This is separate from **Last active tab**, which keeps toggling between your two most recently used tabs.
+Assign **Walk backward through recently used tabs (up to 32)** and **Walk forward toward newer tabs in the same recent-tab history** in **Edit keys**. The popup calls them **Older recent tab** and **Newer recent tab**. This is separate from **Last active tab**, which keeps toggling between your two most recently used tabs.
 
-The first press freezes the current recent-tab list; each additional press selects the next older surviving tab. For example, after using A → B → C → D, repeated presses take you D → C → B → A. Switching during the walk updates normal last-active history without reordering the frozen list. Closed tabs are skipped, collapsed destination groups expand, and tabs in app windows or the other privacy context are excluded.
+The first press freezes the current recent-tab list; each additional press selects the next older surviving tab. For example, after using A → B → C → D, repeated presses take you D → C → B → A. Use **Newer recent tab** to retrace the same list in the other direction: A → B → C → D. You can alternate the two commands at any point. Switching during the walk updates normal last-active history without reordering the frozen list. Closed tabs are skipped, collapsed destination groups expand, and tabs in app windows or the other privacy context are excluded.
 
-The walk stops at the oldest available entry and reports that it reached the end; it does not wrap. Selecting a different tab or window yourself, or running another extension command, starts a fresh walk next time. The cursor survives worker suspension within the browser session. The 32-entry limit includes your starting tab, so a full list allows up to 31 backward steps.
+The walk stops at either end and reports that it reached the boundary; it does not wrap. You can immediately reverse direction, including after a boundary message. On a fresh walk, Newer recent tab leaves you on the starting tab and tells you to use Older recent tab first. Selecting a different tab or window yourself, or running an extension command other than these two history commands, starts a fresh walk next time. The cursor survives worker suspension within the browser session. The 32-entry limit includes your starting tab, so a full list allows up to 31 backward steps.
 
 ## Windows and global shortcuts
 

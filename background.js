@@ -127,7 +127,7 @@ async function switchToLastTab(context) {
   });
 }
 
-async function walkRecentTabs(context) {
+async function walkRecentTabs(context, direction = 1) {
   if (!context.active) throw commandError('no_tab');
   await enqueueHistory(async () => {
     const stored = await chrome.storage.session.get([HISTORY_KEY, HISTORY_WALK_KEY]);
@@ -136,8 +136,11 @@ async function walkRecentTabs(context) {
       const ids = [...new Set([context.active.id, ...(stored[HISTORY_KEY] || []).map(entry => entry.tabId)])].slice(0, MAX_HISTORY);
       walk = { ids, index: 0, currentTabId: context.active.id, incognito: context.window.incognito };
     }
+    // Keep the cursor on the current tab, including walks saved by 0.5.0 after
+    // reaching its end. Reversing direction must immediately leave that tab.
+    walk.index = walk.ids.indexOf(context.active.id);
     const windows = await normalWindows();
-    for (let index = walk.index + 1; index < walk.ids.length; index++) {
+    for (let index = walk.index + direction; index >= 0 && index < walk.ids.length; index += direction) {
       const tab = await safeGetTab(walk.ids[index]);
       if (!tab || tab.incognito !== walk.incognito || !windows.some(window => window.id === tab.windowId)) continue;
       try {
@@ -154,8 +157,8 @@ async function walkRecentTabs(context) {
       await recordTab(tab);
       return;
     }
-    await chrome.storage.session.set({ [HISTORY_WALK_KEY]: { ...walk, index: walk.ids.length } });
-    throw commandError('history_end');
+    await chrome.storage.session.set({ [HISTORY_WALK_KEY]: walk });
+    throw commandError(direction > 0 ? 'history_end' : 'history_start');
   });
 }
 
@@ -460,7 +463,8 @@ const handlers = {
     for (const group of groups) await chrome.tabGroups.update(group.id, { collapsed });
   },
   'switch-to-last-tab': switchToLastTab,
-  'walk-recent-tabs': walkRecentTabs,
+  'walk-recent-tabs': context => walkRecentTabs(context, 1),
+  'walk-recent-tabs-forward': context => walkRecentTabs(context, -1),
   'copy-url': copyUrls,
   'copy-screenshot': copyScreenshot,
   'move-all-groups': moveAllGroups,
@@ -475,7 +479,7 @@ const handlers = {
 async function runCommand(command, granted, invokedTab) {
   if (!Object.hasOwn(handlers, command)) throw commandError('unknown_command');
   const context = await commandContext();
-  if (command !== 'walk-recent-tabs') await enqueueHistory(() => chrome.storage.session.remove(HISTORY_WALK_KEY));
+  if (!['walk-recent-tabs', 'walk-recent-tabs-forward'].includes(command)) await enqueueHistory(() => chrome.storage.session.remove(HISTORY_WALK_KEY));
   if (!['move-tabs-to-front', 'move-tabs-to-back'].includes(command)) await chrome.storage.session.remove('lastAction');
   await handlers[command](context, granted, invokedTab);
   await clearError();

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 — 2026-10-08
+
+- Add **Newer recent tab**, which retraces the same frozen history used by Older recent tab toward newer entries. Both commands stop at their respective boundaries, skip closed/ineligible tabs, and allow immediate reversal without changing the Last active tab toggle.
+
 ## 0.5.0 — 2026-10-06
 
 - Add **Older recent tab**, which walks backward through a stable history of up to 32 tabs, skips closed tabs, and stops at the oldest entry. Last active tab remains a two-tab toggle.
