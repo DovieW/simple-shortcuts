@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.4.0",
+  "version": "0.5.1",
   "name": "Simple Shortcuts",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
@@ -8,7 +8,15 @@
     "48": "logo48.png",
     "128": "logo128.png"
   },
-  "permissions": ["tabs", "storage", "tabGroups", "activeTab", "scripting"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "tabGroups",
+    "scripting",
+    "offscreen",
+    "clipboardWrite",
+    "activeTab"
+  ],
   "commands": {
     "duplicate-tab": {
       "suggested_key": "Alt+Shift+D",
@@ -52,8 +60,18 @@
     "switch-to-last-tab": {
       "description": "Switch to the last active tab"
     },
+    "walk-recent-tabs": {
+      "description": "Walk backward through recently used tabs (up to 32)"
+    },
+    "walk-recent-tabs-forward": {
+      "description": "Walk forward toward newer tabs in the same recent-tab history"
+    },
     "copy-url": {
-      "description": "Copy current tab URL to clipboard"
+      "description": "Copy highlighted tab URLs to clipboard (one per line)"
+    },
+    "copy-screenshot": {
+      "suggested_key": "Alt+Shift+S",
+      "description": "Copy a screenshot of the visible page to clipboard"
     },
     "move-tabs-to-window": {
       "description": "Move highlighted tab(s) to different window (cycle)"
@@ -63,6 +81,12 @@
     },
     "go-home": {
       "description": "Navigate to the root/home of the current site"
+    },
+    "cycle-tab-groups": {
+      "description": "Move highlighted tabs to the next group"
+    },
+    "pause-all-tabs": {
+      "description": "Pause media in all normal browser tabs"
     }
   },
   "action": {
@@ -71,5 +95,10 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "minimum_chrome_version": "116",
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
 }
