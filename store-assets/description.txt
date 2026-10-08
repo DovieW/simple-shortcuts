@@ -1,0 +1,45 @@
+Control Chrome with useful keyboard shortcuts for tabs, groups, windows, navigation, and media.
+
+GET BACK TO THE TAB YOU NEED
+• Last active tab returns to the tab you were just using. Press it again to toggle back.
+• Older recent tab walks backward through a stable list of up to 32 recently used tabs, skipping closed tabs and stopping at the oldest available entry.
+• Both work across normal Chrome windows in the same regular/incognito context. Collapsed destination groups expand to reveal your tab.
+
+MANAGE TABS AND GROUPS
+• Duplicate highlighted tabs with their navigation history, pin state, and group membership.
+• Pin or unpin tabs, create tabs near the current tab or within its group, and move selected tabs left, right, to the front, or to the back.
+• Move tabs between normal windows, cycle groups, collapse or expand groups, and rearrange all groups.
+• Open selected web tabs in incognito or navigate to a site's home page.
+
+COPY LINKS AND SCREENSHOTS
+• Copy all highlighted tab URLs in tab-strip order, one per line.
+• Copy the visible page as a PNG image directly to your clipboard. Suggested shortcut: Alt+Shift+S.
+• Screenshots exclude browser toolbars and the rest of the scrolling page.
+
+REMEMBER YOUR SHORTCUT SETUP
+• Search your actual shortcut assignments in a compact popup.
+• Save a snapshot for your operating system, compare missing or changed keys on another browser, and export or import a JSON backup.
+• Backups provide a restoration checklist. Chrome does not allow extensions to assign shortcut keys or read whether their scope is global, so restore keys manually in Chrome's shortcut settings.
+• Snapshots cover Simple Shortcuts only. Chrome Sync requires the same extension ID and compatible sync settings.
+
+CONTROL MEDIA
+• Pause HTML audio and video across accessible browser tabs after granting optional site access.
+• See audible or muted tabs in the popup, jump to them, and mute or unmute them.
+• Restricted pages and some players may not support pausing.
+
+SETUP
+Open the popup and choose Edit keys, or visit chrome://extensions/shortcuts.
+Suggested shortcuts on installation:
+• Duplicate tabs: Alt+Shift+D
+• Pin / unpin tabs: Alt+Shift+P
+• Open in incognito: Alt+Shift+N
+• Copy screenshot: Alt+Shift+S
+Assign the other commands yourself. Chrome or your operating system may reserve a key combination or leave a conflicting suggestion unassigned. Existing assignments remain attached to their existing commands.
+
+PRIVACY
+No analytics, advertising, remote scripts, or developer-operated data servers. Tab activity is used locally for tab switching and organization; screenshots and copied links go to your clipboard only when requested. Shortcut snapshots can use Chrome's sync storage. Media site access is optional and can be revoked from Backup → Revoke media.
+
+Requires Chrome 116 or newer.
+Open source: https://github.com/DovieW/simple-shortcuts
+Support: https://github.com/DovieW/simple-shortcuts/issues
+Privacy policy: https://github.com/DovieW/simple-shortcuts/blob/12ad8b4683298d98794ed0813cb3c041b1997e0a/PRIVACY.md
