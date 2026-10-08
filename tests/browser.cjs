@@ -230,9 +230,18 @@ const http = require('node:http');
       }
       await assert.rejects(run('walk-recent-tabs'), /oldest available tab/);
       assert.equal((await snapshot()).find(tab => tab.active).id, ids[0]);
+      // Reversing immediately after exhaustion skips the current endpoint and
+      // retraces the original list, including a tab closed during the walk.
+      for (const id of [ids[1], ids[2], ids[4], ids[5]]) {
+        await run('walk-recent-tabs-forward');
+        assert.equal((await snapshot()).find(tab => tab.active).id, id);
+      }
+      await assert.rejects(run('walk-recent-tabs-forward'), /newest available tab/);
+      await run('walk-recent-tabs');
+      assert.equal((await snapshot()).find(tab => tab.active).id, ids[4]);
       await evaluate(async id => { await chrome.tabs.update(id, { active: true }); await historyQueue; }, ids[5]);
       await run('walk-recent-tabs');
-      assert.equal((await snapshot()).find(tab => tab.active).id, ids[0]);
+      assert.equal((await snapshot()).find(tab => tab.active).id, ids[4]);
       await run('switch-to-last-tab');
       assert.equal((await snapshot()).find(tab => tab.active).id, ids[5]);
     });
@@ -327,6 +336,8 @@ const http = require('node:http');
       assert.equal(await evaluate(async () => (await chrome.storage.session.get(HISTORY_WALK_KEY))[HISTORY_WALK_KEY]?.currentTabId), other.tabId);
       await fromWindow('walk-recent-tabs', other.windowId);
       assert.equal((await evaluate(async id => chrome.tabs.query({ windowId: id, active: true }), windowId))[0].id, ids[1]);
+      await fromWindow('walk-recent-tabs-forward', windowId);
+      assert.equal((await evaluate(async id => chrome.tabs.query({ windowId: id, active: true }), other.windowId))[0].id, other.tabId);
     });
     await check('group cycling expands destination and preserves selection', async () => {
       const { ids } = await reset(4);
@@ -393,7 +404,7 @@ const http = require('node:http');
       popup.on('pageerror', error => errors.push(error.message));
       await popup.goto(`chrome-extension://${id}/popup.html`);
       await popup.locator('.shortcut-item').first().waitFor();
-      assert.equal(await popup.locator('.shortcut-item').count(), 21);
+      assert.equal(await popup.locator('.shortcut-item').count(), 22);
       assert.equal(await popup.locator('#backupTools').isVisible(), false);
       assert.equal(await popup.locator('#audioSection').isVisible(), false);
       assert.equal(await popup.locator('body').evaluate(element => element.scrollHeight <= element.clientHeight), true);
@@ -420,7 +431,7 @@ const http = require('node:http');
       const platform = await evaluate(async () => (await chrome.runtime.getPlatformInfo()).os);
       const key = `shortcutSnapshotV1-${platform}`;
       const original = await evaluate(async key => (await chrome.storage.sync.get(key))[key], key);
-      assert.equal(Object.keys(original.bindings).length, 21);
+      assert.equal(Object.keys(original.bindings).length, 22);
       await popup.reload();
       await popup.locator('#memorySummary').filter({hasText:/^Saved$/}).waitFor();
       const remembered = structuredClone(original);

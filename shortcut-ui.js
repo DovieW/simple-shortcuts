@@ -22,6 +22,7 @@ function shortCommandLabel(command) {
     'switch-windows': 'Next window', 'move-tabs-to-window': 'Move to next window',
     'toggle-collapse-groups': 'Collapse / expand groups', 'switch-to-last-tab': 'Last active tab',
     'walk-recent-tabs': 'Older recent tab',
+    'walk-recent-tabs-forward': 'Newer recent tab',
     'copy-url': 'Copy links', 'copy-screenshot': 'Copy screenshot', 'move-all-groups': 'Groups to front / back', 'go-home': 'Site home',
     'cycle-tab-groups': 'Move to next group', 'pause-all-tabs': 'Pause all media'
   };
