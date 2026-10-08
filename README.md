@@ -139,3 +139,5 @@ Icons are resized from the generated image at `assets/icon.png`; `npm run icons`
 Run `npm run package` to create `/tmp/simple-shortcuts-release-<version>/simple-shortcuts-v<version>.zip`. It requires the `zip` command and includes only runtime files, icons, the license, README, and changelog. To choose another output directory, use `npm run package -- /path/to/output`.
 
 To verify the extracted ZIP instead of the source directory, run `SHORTCUTS_TEST_EXTENSION=/path/to/extracted npm run test:browser`. Test fixtures still use disposable profiles and local pages.
+
+Store listing text, permission explanations, and manual submission instructions are in [store-assets/UPLOAD.md](store-assets/UPLOAD.md). Run `node scripts/render-store-assets.cjs` to generate the icon, screenshots, and promotional tiles in `/tmp/simple-shortcuts-store-0.5.0`. The screenshots use the real popup in a disposable fixture profile. See [the privacy policy](PRIVACY.md) for data handling details.
