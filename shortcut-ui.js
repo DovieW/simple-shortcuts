@@ -16,7 +16,7 @@ function matchesCommand(command, query) {
 
 function shortCommandLabel(command) {
   const labels = {
-    'duplicate-tab': 'Duplicate tabs', 'pin-tab': 'Pin / unpin tabs', 'go-incognito': 'Open in incognito',
+    'duplicate-tab': 'Duplicate tabs', 'discard-tabs': 'Unload tabs', 'pin-tab': 'Pin / unpin tabs', 'go-incognito': 'Open in incognito',
     'open-tab-near': 'New tab nearby', 'add-tab-to-current-group': 'New tab in group', 'open-tab-at-end': 'New tab at end',
     'move-tabs-left': 'Move left', 'move-tabs-right': 'Move right', 'move-tabs-to-front': 'Move to front', 'move-tabs-to-back': 'Move to back',
     'switch-windows': 'Next window', 'move-tabs-to-window': 'Move to next window',

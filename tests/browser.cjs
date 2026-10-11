@@ -13,7 +13,11 @@ const http = require('node:http');
   await fs.mkdir(artifacts, { recursive: true });
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chromium', headless: process.env.SHORTCUTS_HEADED !== '1',
-    args: ['--ozone-platform=x11', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--autoplay-policy=no-user-gesture-required']
+    // Discarded tabs have no view: viewport emulation crashes Chromium when
+    // Playwright attaches to the replacement WebContents. See Playwright's
+    // connect-over-cdp discard regression test. No user profile is affected.
+    viewport: null,
+    args: ['--ozone-platform=x11', '--enable-features=AllowDevtoolsConnectedDiscard', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--autoplay-policy=no-user-gesture-required']
   });
   let server;
   try {
@@ -57,6 +61,63 @@ const http = require('node:http');
       await task(); console.log(`PASS ${name}`);
     }
     console.log(`Chromium ${context.browser().version()}; ${await evaluate(async () => (await chrome.commands.getAll()).length)} commands loaded`);
+
+    async function loadedTabs(count) {
+      const state = await reset(count);
+      for (const [index, id] of state.ids.entries()) {
+        await evaluate(({ id, url }) => chrome.tabs.update(id, { url }), { id, url: `${base}/unload-${index}` });
+        await waitForUrl(id, `/unload-${index}`);
+      }
+      return state;
+    }
+    await check('unload all highlighted tabs, including active, pinned and grouped, without closing or moving them', async () => {
+      const { ids, windowId } = await loadedTabs(5);
+      await evaluate(async ({ ids, windowId }) => {
+        await chrome.tabs.update(ids[0], { pinned: true });
+        const groupId = await chrome.tabs.group({ tabIds: [ids[2], ids[3]] });
+        await chrome.tabGroups.update(groupId, { title: 'Keep group', color: 'green' });
+        await chrome.tabs.highlight({ windowId, tabs: [0, 2, 4] });
+      }, { ids, windowId });
+      const before = await snapshot();
+      await run('discard-tabs');
+      const after = await snapshot();
+      // Chromium can give discarded replacement WebContents a new tab ID.
+      const metadata = tabs => tabs.map(({ index, url, pinned, groupId }) => ({ index, url, pinned, groupId }));
+      assert.deepEqual(metadata(after), metadata(before));
+      assert.deepEqual(after.filter(tab => tab.discarded).map(tab => tab.url), [0, 2, 4].map(index => `${base}/unload-${index}`));
+      assert.equal(after.find(tab => tab.active).id, ids[1]);
+      await evaluate(() => historyQueue);
+      await run('switch-to-last-tab');
+      const previous = (await snapshot()).find(tab => tab.active);
+      assert.equal(previous.url, `${base}/unload-0`);
+      assert.equal((await waitForUrl(previous.id, '/unload-0')).discarded, false);
+      const unloaded = after.find(tab => tab.url === `${base}/unload-2`);
+      await evaluate(id => chrome.tabs.update(id, { active: true }), unloaded.id);
+      const reloaded = await waitForUrl(unloaded.id, '/unload-2');
+      assert.equal(reloaded.discarded, false);
+      assert.equal(reloaded.groupId, before.find(tab => tab.id === ids[2]).groupId);
+    });
+    for (const count of [1, 3]) await check(`unload ${count === 1 ? 'the sole tab' : 'every selected tab'} with a new active tab`, async () => {
+      const { ids, windowId } = await loadedTabs(count);
+      await evaluate(({ windowId, count }) => chrome.tabs.highlight({ windowId, tabs: Array.from({ length: count }, (_, i) => i) }), { windowId, count });
+      await run('discard-tabs');
+      const tabs = await snapshot();
+      assert.deepEqual(tabs.filter(tab => tab.discarded).map(tab => tab.url), ids.map((_, index) => `${base}/unload-${index}`));
+      assert.equal(tabs.length, count + 1);
+      const active = tabs.find(tab => tab.active);
+      assert.equal(ids.includes(active.id), false);
+      assert.equal(active.groupId, -1);
+      await waitForUrl(active.id, 'chrome://newtab');
+    });
+    await check('unload does not reload an unselected discarded tab to park focus', async () => {
+      const { ids } = await loadedTabs(2);
+      await evaluate(id => chrome.tabs.discard(id), ids[1]);
+      await run('discard-tabs');
+      const tabs = await snapshot();
+      assert.deepEqual(tabs.filter(tab => tab.discarded).map(tab => tab.url), ids.map((_, index) => `${base}/unload-${index}`));
+      assert.equal(tabs.length, 3);
+      assert.equal(ids.includes(tabs.find(tab => tab.active).id), false);
+    });
 
     await check('screenshot requires a user-granted capture permission', async () => {
       await reset(1);
@@ -404,7 +465,7 @@ const http = require('node:http');
       popup.on('pageerror', error => errors.push(error.message));
       await popup.goto(`chrome-extension://${id}/popup.html`);
       await popup.locator('.shortcut-item').first().waitFor();
-      assert.equal(await popup.locator('.shortcut-item').count(), 22);
+      assert.equal(await popup.locator('.shortcut-item').count(), 23);
       assert.equal(await popup.locator('#backupTools').isVisible(), false);
       assert.equal(await popup.locator('#audioSection').isVisible(), false);
       assert.equal(await popup.locator('body').evaluate(element => element.scrollHeight <= element.clientHeight), true);
@@ -414,6 +475,10 @@ const http = require('node:http');
       await popup.locator('#search').fill('copy-url');
       assert.equal(await popup.locator('.shortcut-item').evaluate(element => element.tagName), 'DIV');
       assert.equal(await popup.locator('.shortcut-item button').count(), 0);
+      await popup.locator('#search').fill('');
+      await popup.locator('#search').fill('discard-tabs');
+      assert.equal(await popup.locator('.shortcut-item').count(), 1);
+      assert.equal(await popup.getByText('Unload tabs', { exact: true }).count(), 1);
       await popup.locator('#search').fill('');
       await popup.emulateMedia({ colorScheme: 'dark' });
       await popup.locator('body').screenshot({ path: path.join(artifacts, 'popup-dark.png') });
@@ -431,7 +496,7 @@ const http = require('node:http');
       const platform = await evaluate(async () => (await chrome.runtime.getPlatformInfo()).os);
       const key = `shortcutSnapshotV1-${platform}`;
       const original = await evaluate(async key => (await chrome.storage.sync.get(key))[key], key);
-      assert.equal(Object.keys(original.bindings).length, 22);
+      assert.equal(Object.keys(original.bindings).length, 23);
       await popup.reload();
       await popup.locator('#memorySummary').filter({hasText:/^Saved$/}).waitFor();
       const remembered = structuredClone(original);

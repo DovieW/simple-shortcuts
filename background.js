@@ -106,6 +106,21 @@ chrome.tabs.onRemoved.addListener(tabId => {
   }).catch(() => {});
 });
 
+chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
+  // Discarding can replace WebContents and assign a new tab ID. Preserve the
+  // position in recent-tab history so unloaded tabs can still be revisited.
+  enqueueHistory(async () => {
+    const { [HISTORY_KEY]: history = [], [HISTORY_WALK_KEY]: walk } = await chrome.storage.session.get([HISTORY_KEY, HISTORY_WALK_KEY]);
+    const changes = { [HISTORY_KEY]: history.map(entry => entry.tabId === removedTabId ? { ...entry, tabId: addedTabId } : entry) };
+    if (walk) changes[HISTORY_WALK_KEY] = {
+      ...walk,
+      ids: walk.ids.map(id => id === removedTabId ? addedTabId : id),
+      currentTabId: walk.currentTabId === removedTabId ? addedTabId : walk.currentTabId
+    };
+    await chrome.storage.session.set(changes);
+  }).catch(() => {});
+});
+
 async function switchToLastTab(context) {
   if (!context.active) throw commandError('no_tab');
   // Synchronously enqueue the entire read/modify/switch to prevent lost activation writes.
@@ -208,6 +223,42 @@ async function duplicateTabs(context) {
     await chrome.tabs.move(duplicate.id, { index: refreshed.index + 1 });
   }
   await highlightIds(context.window.id, ids);
+}
+
+async function discardTabs(context) {
+  if (!context.selected.length) throw commandError('no_tab');
+  // Keep the original selection: activating a fallback clears highlighting.
+  const ids = new Set(context.selected.map(tab => tab.id));
+  const tabs = await chrome.tabs.query({ windowId: context.window.id });
+  let failed = false;
+  if (tabs.some(tab => tab.active && ids.has(tab.id))) {
+    const collapsed = new Set((await chrome.tabGroups.query({ windowId: context.window.id }))
+      .filter(group => group.collapsed).map(group => group.id));
+    // Do not reload another discarded tab or expand a collapsed group just to
+    // park focus. Chrome requires one active tab that is not being discarded.
+    const fallback = tabs.find(tab => !ids.has(tab.id) && !tab.discarded && !collapsed.has(tab.groupId));
+    try {
+      if (fallback) await chrome.tabs.update(fallback.id, { active: true });
+      else await chrome.tabs.create({ windowId: context.window.id, url: 'chrome://newtab/', active: true });
+    } catch { failed = true; }
+  }
+  for (const id of ids) {
+    try {
+      const tab = await chrome.tabs.get(id);
+      // A tab moved by the user during the command is no longer our target.
+      if (tab.windowId !== context.window.id || tab.incognito !== context.window.incognito) {
+        throw commandError('invalid_target');
+      }
+      if (tab.discarded) continue;
+      const discarded = await chrome.tabs.discard(id);
+      if (!discarded?.discarded) throw commandError('discard_partial');
+    } catch (error) {
+      // Closed targets need no unloading. Other failures must be visible, and
+      // must not prevent the rest of a multi-tab selection from being tried.
+      if (commandErrorCode(error) !== 'no_tab') failed = true;
+    }
+  }
+  if (failed) throw commandError('discard_partial');
 }
 
 async function setPinned(tabs, pinned) {
@@ -441,6 +492,7 @@ async function pauseAllTabs(context, granted) {
 
 const handlers = {
   'duplicate-tab': duplicateTabs,
+  'discard-tabs': discardTabs,
   'pin-tab': context => setPinned(context.selected, !context.selected.every(tab => tab.pinned)),
   'go-incognito': async context => {
     const urls = context.selected.map(tab => tab.url).filter(url => /^https?:/.test(url || ''));

@@ -13,6 +13,7 @@ const COMMAND_ERROR_MESSAGES = {
   no_web_url: 'Select a web page first. This action needs an HTTP or HTTPS address.',
   permission_denied: 'Site access was declined. Try Pause again and allow access.',
   media_partial: 'Some pages could not be paused. They may block access or have closed.',
+  discard_partial: 'Some selected tabs could not be unloaded. Chrome may block unloading, or the tabs may have changed. Check the selection and try again.',
   clipboard_failed: 'Could not copy to the clipboard. Try the shortcut again.',
   screenshot_permission: 'Chrome has not granted capture access to this tab. Focus the page and press the screenshot shortcut again.',
   screenshot_changed: 'The active page changed during capture. Try the screenshot shortcut again.',

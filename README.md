@@ -15,6 +15,7 @@ Four shortcuts are suggested by the extension on installation. Chrome can assign
 | Command | Suggested on installation | Recommended manual binding |
 | --- | --- | --- |
 | Duplicate highlighted tab(s) | Alt+Shift+D | |
+| Unload highlighted tab(s), keeping them open | | Choose an unused key |
 | Open highlighted web tabs in incognito | Alt+Shift+N | |
 | Toggle pin highlighted tab(s) | Alt+Shift+P | |
 | Copy a screenshot of the visible page | Alt+Shift+S | |
@@ -36,6 +37,14 @@ Four shortcuts are suggested by the extension on installation. Chrome can assign
 | Pause media in all normal browser tabs | | Choose an unused key |
 
 Chrome and operating-system shortcuts can take precedence. On macOS, use the shortcut settings to choose your preferred Command/Control bindings; the popup displays them separately.
+
+## Unload tabs
+
+Assign **Unload highlighted tab(s), keeping them open** in **Edit keys**. The popup calls it **Unload tabs**. It unloads every highlighted tab in the current normal window, including the active tab, while keeping each tab's URL, tab-strip position, pin state, and group membership. Selecting an unloaded tab reloads it.
+
+Chrome cannot discard an active tab, so the command first focuses an unselected loaded tab outside collapsed groups. If all tabs are selected, or no such tab is available, it opens an ungrouped new tab. It captures the selection before changing focus, so all originally highlighted tabs are unloaded. Already unloaded tabs stay unloaded, and selections in other windows are unaffected.
+
+Save unsent messages and form edits first: unloading can lose unsaved page state. Chrome refusals are reported in the popup and badge while the command still attempts the other selected tabs. This stops tab page code; separate apps, service workers, and server-side tasks can continue.
 
 ## Copy links and screenshots
 
@@ -119,7 +128,7 @@ npm run test:browser
 npm run icons
 ```
 
-The Node regression suite uses a stateful Chrome API mock to verify destructive-tab safeguards, selection ordering, group boundaries, rapid history, privacy/window targeting, screenshot races, clipboard errors, and media permission denial. Browser tests load the actual extension into bundled Chromium with a disposable `/tmp` profile; they never connect to your existing browser. The clipboard fixture verifies pasted text and PNG content, including screenshot dimensions and pixels. Test screenshots are saved to temporary artifact directories, or `SHORTCUTS_TEST_ARTIFACTS` if set.
+The Node regression suite uses a stateful Chrome API mock to verify tab unloading, partial failures, destructive-tab safeguards, selection ordering, group boundaries, rapid history, privacy/window targeting, screenshot races, clipboard errors, and media permission denial. Browser tests verify multi-tab unloading, reload behavior, and a new active tab when every tab is selected. The discard fixture disables viewport emulation and enables discarding DevTools-attached tabs because Playwright attaches to its test pages. These test-only browser settings follow Playwright's own discard regression fixture. Browser tests load the actual extension into bundled Chromium with a disposable `/tmp` profile; they never connect to your existing browser. The clipboard fixture verifies pasted text and PNG content, including screenshot dimensions and pixels. Test screenshots are saved to temporary artifact directories, or `SHORTCUTS_TEST_ARTIFACTS` if set.
 
 The media browser fixture separately verifies pausing after site access is granted. Beyond the isolated screenshot accelerator check below, native shortcut dispatch, OS focus, incognito enablement, and permission prompts still need manual checks in an installed Chrome extension. Suggested checks:
 
@@ -142,4 +151,4 @@ Run `npm run package` to create `/tmp/simple-shortcuts-release-<version>/simple-
 
 To verify the extracted ZIP instead of the source directory, run `SHORTCUTS_TEST_EXTENSION=/path/to/extracted npm run test:browser`. Test fixtures still use disposable profiles and local pages.
 
-Store listing text, permission explanations, and manual submission instructions are in [store-assets/UPLOAD.md](store-assets/UPLOAD.md). Run `node scripts/render-store-assets.cjs` to generate the icon, screenshots, and promotional tiles in `/tmp/simple-shortcuts-store-0.5.0`. The screenshots use the real popup in a disposable fixture profile. See [the privacy policy](PRIVACY.md) for data handling details.
+Store listing text, permission explanations, and manual submission instructions are in [store-assets/UPLOAD.md](store-assets/UPLOAD.md). Run `node scripts/render-store-assets.cjs` to generate the icon, screenshots, and promotional tiles in `/tmp/simple-shortcuts-store-<version>`. The screenshots use the real popup in a disposable fixture profile. See [the privacy policy](PRIVACY.md) for data handling details.

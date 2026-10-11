@@ -7,7 +7,8 @@ const sharp = require('sharp');
 
 (async () => {
   const root = path.resolve(__dirname, '..');
-  const output = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'simple-shortcuts-store-0.5.0'));
+  const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
+  const output = path.resolve(process.argv[2] || path.join(os.tmpdir(), `simple-shortcuts-store-${manifest.version}`));
   await fs.mkdir(output, { recursive: true });
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'shortcuts-store-profile-'));
   const context = await chromium.launchPersistentContext(profile, {

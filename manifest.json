@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.5.1",
+  "version": "0.6.0",
   "name": "Simple Shortcuts",
   "description": "Simple Chrome extension that adds useful shortcuts.",
   "icons": {
@@ -21,6 +21,9 @@
     "duplicate-tab": {
       "suggested_key": "Alt+Shift+D",
       "description": "Duplicate tab(s)"
+    },
+    "discard-tabs": {
+      "description": "Unload highlighted tab(s), keeping them open"
     },
     "pin-tab": {
       "suggested_key": "Alt+Shift+P",

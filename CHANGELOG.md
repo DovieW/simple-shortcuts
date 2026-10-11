@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-10-11
+
+- Add **Unload tabs**, which unloads every highlighted tab while keeping it in the tab bar with its URL, position, pin state, and group membership. The active tab is included: focus moves to an unselected loaded tab, or a new tab when needed. Already unloaded tabs stay unloaded, and other windows are unaffected.
+- Report Chrome refusals and tab-change races without stopping the rest of the selection from being attempted. Selecting an unloaded tab reloads it; save unsent messages and other page edits before unloading.
+- Preserve recent-tab history when Chrome replaces an unloaded tab's internal ID, so Last active tab can still return to it.
+
+No new permissions or suggested key assignments. Assign **Unload highlighted tab(s), keeping them open** in Chrome's shortcut settings.
+
 ## 0.5.1 — 2026-10-08
 
 - Add **Newer recent tab**, which retraces the same frozen history used by Older recent tab toward newer entries. Both commands stop at their respective boundaries, skip closed/ineligible tabs, and allow immediate reversal without changing the Last active tab toggle.

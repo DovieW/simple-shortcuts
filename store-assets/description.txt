@@ -6,6 +6,7 @@ GET BACK TO THE TAB YOU NEED
 • Both work across normal Chrome windows in the same regular/incognito context. Collapsed destination groups expand to reveal your tab.
 
 MANAGE TABS AND GROUPS
+• Unload all highlighted tabs while keeping them in the tab bar. Selecting one again reloads it. Save unsent messages and form edits first. If needed, focus moves to an unselected loaded tab or a new tab so even the active selected tab can be unloaded.
 • Duplicate highlighted tabs with their navigation history, pin state, and group membership.
 • Pin or unpin tabs, create tabs near the current tab or within its group, and move selected tabs left, right, to the front, or to the back.
 • Move tabs between normal windows, cycle groups, collapse or expand groups, and rearrange all groups.

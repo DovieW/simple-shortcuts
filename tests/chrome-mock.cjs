@@ -43,9 +43,20 @@ function createHarness(options = {}) {
       async create(properties) { calls.push(['window-create', clone(properties)]); return { id: 99 }; }
     },
     tabs: {
-      onActivated: event(), onRemoved: event(),
+      onActivated: event(), onRemoved: event(), onReplaced: event(),
       async query(query = {}) { return clone(tabs.filter(tab => Object.entries(query).every(([key, value]) => key === 'currentWindow' ? tab.windowId === lastFocused : tab[key] === value))); },
       async get(id) { return clone(getTab(id)); },
+      async discard(id) {
+        const tab = getTab(id); calls.push(['discard', id]);
+        if (tab.active) throw Error('Cannot discard an active tab');
+        if (options.failDiscardIds?.includes(id)) throw Error('Discard blocked');
+        tab.discarded = true;
+        if (options.discardReplacesTab) {
+          tab.id = nextId++;
+          chrome.tabs.onReplaced.fire(tab.id, id);
+        }
+        return clone(tab);
+      },
       async captureVisibleTab(windowId, properties) {
         calls.push(['capture', windowId, clone(properties)]);
         if (options.captureError) throw Error(options.captureError);
@@ -78,6 +89,7 @@ function createHarness(options = {}) {
         if (properties.active) {
           tabs.filter(item => item.windowId === tab.windowId).forEach(item => { item.active = false; item.highlighted = false; });
           tab.active = true; tab.highlighted = true;
+          tab.discarded = false;
           chrome.tabs.onActivated.fire({ tabId: id, windowId: tab.windowId });
         }
         if (properties.pinned !== undefined && properties.pinned !== tab.pinned) {
@@ -119,7 +131,7 @@ function createHarness(options = {}) {
         const local = tabs.filter(tab => tab.windowId === properties.windowId);
         for (const tab of local) { tab.active = false; tab.highlighted = properties.tabs.includes(tab.index); }
         const active = local[properties.tabs[0]];
-        if (active) { active.active = true; chrome.tabs.onActivated.fire({ tabId: active.id, windowId: active.windowId }); }
+        if (active) { active.active = true; active.discarded = false; chrome.tabs.onActivated.fire({ tabId: active.id, windowId: active.windowId }); }
       }
     },
     tabGroups: {

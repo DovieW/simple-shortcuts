@@ -1,4 +1,4 @@
-# Chrome Web Store privacy fields for 0.5.0
+# Chrome Web Store privacy fields for 0.6.0
 
 These descriptions match the released source. Review the dashboard's actual field wording before certifying or submitting.
 
@@ -61,6 +61,8 @@ Review the exact certification wording yourself before selecting the checkboxes.
 https://github.com/DovieW/simple-shortcuts/blob/12ad8b4683298d98794ed0813cb3c041b1997e0a/PRIVACY.md
 
 ## Reviewer test instructions
+
+For Unload tabs, assign **Unload highlighted tab(s), keeping them open** in Edit keys. Open several ordinary web tabs and highlight two or more, including the active tab. Invoke the command and verify all originally highlighted tabs stay in the tab strip with their URLs, positions, pin state, and groups, but reload when selected. Repeat with every tab selected and with a single-tab window: a new tab stays active so the original selection can be unloaded. Save any unsent text or form edits first. Other windows and already unloaded tabs are unaffected. Chrome refusals are shown in the popup and badge, and the rest of the selection is still attempted. No additional permissions are requested.
 
 No account or subscription is required. Requires Chrome 116+. Open the popup, choose Edit keys, and assign an unused key for Last active tab and Older recent tab. Visit three tabs and test toggling versus backward traversal. Highlight multiple tabs and invoke Copy links, then paste into a text field. Invoke Copy screenshot from a focused page (suggested Alt+Shift+S) and paste into an application that accepts PNG images. Save a shortcut snapshot in the popup; Backup exposes Export and Import. Pause requests optional site access; deny it to verify no scripts run, or allow it and test a standard HTML video/audio page. Revoke it with Backup → Revoke media. Existing commands can be used in regular/incognito contexts separately when Chrome's Allow in incognito is enabled.
 
