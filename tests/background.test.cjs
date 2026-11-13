@@ -182,8 +182,9 @@ test('recent-tab walk reverses direction without reordering and stops at both en
   assert.equal(h.tabs.find(tab => tab.active).id, 3);
 });
 
-test('newer recent tab skips closed entries after restart and accepts an old end cursor', async () => {
+test('newer recent tab skips closed entries after restart and normalizes an end cursor', async () => {
   const h = createHarness({ tabs: [{ id: 1, active: true }, { id: 3 }, { id: 4 }], session: { tabHistory: [1, 3, 4].map(tabId => ({ tabId })), tabHistoryWalk: { ids: [4, 3, 2, 1], index: 4, currentTabId: 1, incognito: false } } });
+  Object.assign(h.session.tabHistoryWalk, { settings: await h.evaluate('readTabSettings()'), lastStepAt: Date.now(), windowId: 1 });
   await h.run('walk-recent-tabs-forward'); await h.drain();
   assert.equal(h.tabs.find(tab => tab.active).id, 3);
   await h.run('walk-recent-tabs-forward'); await h.drain();

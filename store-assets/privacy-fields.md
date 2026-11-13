@@ -1,4 +1,4 @@
-# Chrome Web Store privacy fields for 0.6.0
+# Chrome Web Store privacy fields for 0.7.0
 
 These descriptions match the released source. Review the dashboard's actual field wording before certifying or submitting.
 
@@ -18,7 +18,7 @@ Create, inspect, move, recreate, collapse, and expand tab groups for the user's 
 
 ### storage
 
-Keep recent tab identifiers, traversal state, and limited command/error status in Chrome session storage. Save explicitly requested shortcut snapshots (command names, key combinations, operating system, and timestamp) in Chrome sync storage so the popup can compare assignments on another browser. URLs, page content, and screenshots are not included in shortcut snapshots.
+Keep recent tab identifiers, traversal state, and limited command/error status in Chrome session storage. Save explicitly requested shortcut snapshots (command names, key combinations, operating system, and timestamp) in Chrome sync storage so the popup can compare assignments on another browser. Also sync tab-switching preferences changed in Settings (pause, automatic reset, window scope, wrapping, and preview-history recording). URLs, tab history, page content, and screenshots are not included in synced preferences or shortcut snapshots.
 
 ### activeTab
 
@@ -58,9 +58,11 @@ Review the exact certification wording yourself before selecting the checkboxes.
 
 ## Privacy policy URL
 
-https://github.com/DovieW/simple-shortcuts/blob/12ad8b4683298d98794ed0813cb3c041b1997e0a/PRIVACY.md
+https://github.com/DovieW/simple-shortcuts/blob/v0.7.0/PRIVACY.md
 
 ## Reviewer test instructions
+
+Open Settings in the popup. Change the pause, reopen the popup, and verify it persists. Visit A → B → C → D, use Older twice quickly to reach B, wait past the configured pause, then use Older to return to D. Newer reverses within a session. Test disabling the pause, window scope, wrapping, and remembering previews. Restore defaults resets these preferences only. Preferences use Chrome Sync when enabled for the same extension ID; tab history does not sync.
 
 For Unload tabs, assign **Unload highlighted tab(s), keeping them open** in Edit keys. Open several ordinary web tabs and highlight two or more, including the active tab. Invoke the command and verify all originally highlighted tabs stay in the tab strip with their URLs, positions, pin state, and groups, but reload when selected. Repeat with every tab selected and with a single-tab window: a new tab stays active so the original selection can be unloaded. Save any unsent text or form edits first. Other windows and already unloaded tabs are unaffected. Chrome refusals are shown in the popup and badge, and the rest of the selection is still attempted. No additional permissions are requested.
 

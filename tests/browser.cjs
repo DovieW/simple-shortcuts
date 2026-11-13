@@ -287,7 +287,7 @@ const http = require('node:http');
       await evaluate(id => chrome.tabs.remove(id), ids[3]);
       for (const id of [ids[2], ids[1], ids[0]]) {
         await run('walk-recent-tabs');
-        assert.equal((await snapshot()).find(tab => tab.active).id, id);
+        assert.equal((await snapshot()).find(tab => tab.active).id, id, JSON.stringify(await evaluate(async () => ({ now: Date.now(), ...(await chrome.storage.session.get(['tabHistory', 'tabHistoryWalk'])) }))));
       }
       await assert.rejects(run('walk-recent-tabs'), /oldest available tab/);
       assert.equal((await snapshot()).find(tab => tab.active).id, ids[0]);
@@ -546,6 +546,73 @@ const http = require('node:http');
       await popup.emulateMedia({colorScheme:'dark'});
       await popup.locator('body').screenshot({path:path.join(artifacts,'shortcut-memory.png')});
       await popup.close();
+    });
+    await check('tab settings save, sync live, validate, recover from errors, and restore defaults', async () => {
+      const popup = await context.newPage();
+      const errors = [];
+      popup.on('pageerror', error => errors.push(error.message));
+      await popup.goto(`chrome-extension://${id}/popup.html`);
+      await popup.getByRole('button', { name: 'Settings', exact: true }).click();
+      await popup.waitForFunction(() => !document.getElementById('tabSettingsFields').disabled);
+      assert.equal(await popup.locator('#pauseSeconds').inputValue(), '1.5');
+      assert.equal(await popup.locator('#rememberPreviews').isChecked(), false);
+      assert.equal(await popup.locator('body').evaluate(element => element.scrollHeight <= element.clientHeight && element.scrollWidth <= element.clientWidth), true);
+      const snapshotsBefore = await evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.sync.get(null)).filter(([key]) => key.startsWith('shortcutSnapshot'))));
+      await popup.locator('#pauseSeconds').fill('2.75');
+      await popup.locator('#pauseSeconds').press('Tab');
+      await popup.getByText('Saved. Syncs when Chrome Sync is enabled.', { exact: true }).waitFor();
+      assert.equal((await evaluate(() => readTabSettings())).pauseMs, 2750);
+      await popup.reload();
+      await popup.getByRole('button', { name: 'Settings', exact: true }).click();
+      await popup.waitForFunction(() => document.getElementById('pauseSeconds').value === '2.75');
+      await popup.locator('#pauseSeconds').fill('0');
+      await popup.locator('#pauseSeconds').press('Tab');
+      await popup.getByText('Enter a pause from 0.25 to 10 seconds, in steps of 0.05.', { exact: true }).waitFor();
+      assert.equal((await evaluate(() => readTabSettings())).pauseMs, 2750);
+      await evaluate(() => chrome.storage.sync.set({ 'tabSwitchingV1-pauseMs': 4000, 'tabSwitchingV1-wrap': true }));
+      await popup.waitForFunction(() => document.getElementById('pauseSeconds').value === '4' && document.getElementById('wrap').checked);
+      await popup.locator('#resetAfterPause').uncheck();
+      await popup.waitForFunction(() => document.getElementById('pauseSeconds').disabled && !document.getElementById('tabSettingsFields').disabled);
+      assert.equal((await evaluate(() => readTabSettings())).resetAfterPause, false);
+      await popup.evaluate(() => {
+        globalThis.realSettingsSet = chrome.storage.sync.set;
+        chrome.storage.sync.set = async () => { throw new Error('Simulated sync write failure'); };
+      });
+      await popup.locator('#includeOtherWindows').click();
+      await popup.getByText('Could not save. Try changing the setting again.', { exact: true }).waitFor();
+      await popup.waitForFunction(() => document.getElementById('includeOtherWindows').checked);
+      await popup.evaluate(() => { chrome.storage.sync.set = globalThis.realSettingsSet; });
+      await popup.locator('#includeOtherWindows').uncheck();
+      await popup.getByText('Saved. Syncs when Chrome Sync is enabled.', { exact: true }).waitFor();
+      assert.equal((await evaluate(() => readTabSettings())).includeOtherWindows, false);
+      await popup.getByRole('button', { name: 'Restore defaults' }).click();
+      await popup.waitForFunction(() => !document.getElementById('tabSettingsFields').disabled && document.getElementById('pauseSeconds').value === '1.5' && !document.getElementById('pauseSeconds').disabled);
+      assert.deepEqual(await evaluate(() => readTabSettings()), { resetAfterPause: true, pauseMs: 1500, includeOtherWindows: true, wrap: false, rememberPreviews: false });
+      assert.deepEqual(await evaluate(async () => Object.fromEntries(Object.entries(await chrome.storage.sync.get(null)).filter(([key]) => key.startsWith('shortcutSnapshot')))), snapshotsBefore);
+      for (const scheme of ['dark', 'light']) {
+        await popup.emulateMedia({ colorScheme: scheme });
+        await popup.locator('#tabSettingsFields').evaluate(element => { element.scrollTop = 0; });
+        assert.equal(await popup.locator('#resetTabSettings').evaluate(element => element.getBoundingClientRect().bottom <= document.body.getBoundingClientRect().bottom), true);
+        await popup.locator('body').screenshot({ path: path.join(artifacts, `tab-settings-${scheme}.png`) });
+      }
+      await popup.getByRole('button', { name: 'Back', exact: true }).click();
+      assert.equal(await popup.locator('#shortcutView').isVisible(), true);
+      assert.deepEqual(errors, []);
+      await popup.close();
+    });
+    await check('real tab switching respects the synced pause and commits only the final tab', async () => {
+      const { ids } = await reset(4);
+      await evaluate(async ids => {
+        await saveTabSettings({ pauseMs: 250 });
+        for (const id of ids) { await chrome.tabs.update(id, { active: true }); await historyQueue; }
+      }, ids);
+      await run('walk-recent-tabs');
+      await run('walk-recent-tabs');
+      assert.equal((await snapshot()).find(tab => tab.active).id, ids[1]);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await run('walk-recent-tabs');
+      assert.equal((await snapshot()).find(tab => tab.active).id, ids[3]);
+      await evaluate(() => saveTabSettings(TAB_SETTINGS_DEFAULTS));
     });
     console.log(`Browser artifacts: ${artifacts}`);
   } finally {

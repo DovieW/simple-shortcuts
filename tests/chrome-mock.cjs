@@ -11,6 +11,7 @@ function createHarness(options = {}) {
   const session = structuredClone(options.session || {});
   const calls = [];
   const local = {};
+  const sync = structuredClone(options.sync || {});
   let nextId = Math.max(0, ...tabs.map(tab => tab.id)) + 1;
   let nextGroupId = 100;
   let lastFocused = options.lastFocused || windows.find(window => window.focused && window.type === 'normal')?.id || 1;
@@ -26,7 +27,7 @@ function createHarness(options = {}) {
   const chrome = {
     commands: { onCommand: event() },
     action: { async setBadgeText(value) { calls.push(['badge', value]); }, async setBadgeBackgroundColor() {} },
-    storage: { session: storage(session), local: storage(local) },
+    storage: { session: storage(session), local: storage(local), sync: storage(sync) },
     windows: {
       WINDOW_ID_NONE: -1, onFocusChanged: event(),
       async getAll(query = {}) { return clone(windows.filter(window => !query.windowTypes || query.windowTypes.includes(window.type))); },
@@ -159,7 +160,7 @@ function createHarness(options = {}) {
     importScripts(file) { vm.runInContext(fs.readFileSync(require.resolve('../' + file), 'utf8'), context); }
   });
   vm.runInContext(fs.readFileSync(require.resolve('../background.js'), 'utf8'), context);
-  return { chrome, context, calls, session, get tabs() { return tabs; }, get groups() { return groups; }, windows,
+  return { chrome, context, calls, session, sync, get tabs() { return tabs; }, get groups() { return groups; }, windows,
     evaluate(code) { return vm.runInContext(code, context); },
     async run(command) { return vm.runInContext(`enqueueCommand(() => runCommand(${JSON.stringify(command)}, true))`, context); },
     async drain() { for (let i = 0; i < 3; i++) await vm.runInContext('historyQueue', context); },

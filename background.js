@@ -1,5 +1,6 @@
 'use strict';
 importScripts('command-errors.js');
+importScripts('tab-settings.js');
 
 const NONE = -1;
 const HISTORY_KEY = 'tabHistory';
@@ -64,18 +65,38 @@ async function safeGetTab(id) {
   try { return await chrome.tabs.get(id); } catch { return null; }
 }
 
-async function recordTab(tab) {
+async function promoteTab(tab) {
   if (!tab) return;
   const window = await chrome.windows.get(tab.windowId);
   if (window.type !== 'normal') return;
   const { [HISTORY_KEY]: stored = [] } = await chrome.storage.session.get(HISTORY_KEY);
-  const { [HISTORY_WALK_KEY]: walk } = await chrome.storage.session.get(HISTORY_WALK_KEY);
-  // Manual tab/window selection starts a new traversal. Our own switches save
-  // their destination before activation events are processed by this queue.
-  if (walk && walk.currentTabId !== tab.id) await chrome.storage.session.remove(HISTORY_WALK_KEY);
   const history = stored.filter(entry => entry.tabId !== tab.id);
   history.unshift({ tabId: tab.id, windowId: tab.windowId, incognito: tab.incognito });
   await chrome.storage.session.set({ [HISTORY_KEY]: history.slice(0, MAX_HISTORY) });
+}
+
+function walkExpired(walk, now = Date.now()) {
+  return !walk.settings || !Number.isFinite(walk.lastStepAt) ||
+    (walk.settings.resetAfterPause && (now - walk.lastStepAt >= walk.settings.pauseMs || now < walk.lastStepAt));
+}
+
+async function finishTabWalk(walk) {
+  if (!walk) ({ [HISTORY_WALK_KEY]: walk } = await chrome.storage.session.get(HISTORY_WALK_KEY));
+  if (!walk) return;
+  await promoteTab(await safeGetTab(walk.currentTabId));
+  await chrome.storage.session.remove(HISTORY_WALK_KEY);
+}
+
+async function recordTab(tab) {
+  if (!tab || (await chrome.windows.get(tab.windowId)).type !== 'normal') return;
+  const { [HISTORY_WALK_KEY]: walk } = await chrome.storage.session.get(HISTORY_WALK_KEY);
+  if (walk) {
+    // Our activation events arrive after the cursor has been saved. A manual
+    // selection or an expired session commits only the final preview by default.
+    if (walk.currentTabId !== tab.id || walkExpired(walk)) await finishTabWalk(walk);
+    else if (!walk.settings.rememberPreviews) return;
+  }
+  await promoteTab(tab);
 }
 
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
@@ -145,19 +166,31 @@ async function switchToLastTab(context) {
 async function walkRecentTabs(context, direction = 1) {
   if (!context.active) throw commandError('no_tab');
   await enqueueHistory(async () => {
+    const settings = await readTabSettings();
     const stored = await chrome.storage.session.get([HISTORY_KEY, HISTORY_WALK_KEY]);
     let walk = stored[HISTORY_WALK_KEY];
-    if (!walk || walk.currentTabId !== context.active.id || walk.incognito !== context.window.incognito) {
-      const ids = [...new Set([context.active.id, ...(stored[HISTORY_KEY] || []).map(entry => entry.tabId)])].slice(0, MAX_HISTORY);
-      walk = { ids, index: 0, currentTabId: context.active.id, incognito: context.window.incognito };
+    if (walk && (walk.currentTabId !== context.active.id || walk.incognito !== context.window.incognito ||
+      walkExpired(walk) || Object.keys(settings).some(name => walk.settings?.[name] !== settings[name]))) {
+      await finishTabWalk(walk);
+      walk = null;
     }
-    // Keep the cursor on the current tab, including walks saved by 0.5.0 after
-    // reaching its end. Reversing direction must immediately leave that tab.
+    if (!walk) {
+      await promoteTab(context.active);
+      const { [HISTORY_KEY]: history = [] } = await chrome.storage.session.get(HISTORY_KEY);
+      const ids = [...new Set([context.active.id, ...history.map(entry => entry.tabId)])].slice(0, MAX_HISTORY);
+      walk = { ids, index: 0, currentTabId: context.active.id, incognito: context.window.incognito, windowId: context.window.id, settings };
+    }
+    // Normalize restored cursors. Reversing direction must immediately leave
+    // the current tab, including immediately after a boundary message.
     walk.index = walk.ids.indexOf(context.active.id);
     const windows = await normalWindows();
-    for (let index = walk.index + direction; index >= 0 && index < walk.ids.length; index += direction) {
+    for (let step = 1; step < walk.ids.length; step++) {
+      let index = walk.index + direction * step;
+      if (!settings.wrap && (index < 0 || index >= walk.ids.length)) break;
+      index = (index + walk.ids.length) % walk.ids.length;
       const tab = await safeGetTab(walk.ids[index]);
-      if (!tab || tab.incognito !== walk.incognito || !windows.some(window => window.id === tab.windowId)) continue;
+      if (!tab || tab.incognito !== walk.incognito || !windows.some(window => window.id === tab.windowId) ||
+        (!settings.includeOtherWindows && tab.windowId !== walk.windowId)) continue;
       try {
         if (tab.groupId !== NONE) await chrome.tabGroups.update(tab.groupId, { collapsed: false });
         await chrome.windows.update(tab.windowId, { focused: true });
@@ -165,14 +198,14 @@ async function walkRecentTabs(context, direction = 1) {
       } catch (error) {
         // A tab can close while its group/window is being focused.
         if (!await safeGetTab(tab.id)) continue;
-        await chrome.storage.session.remove(HISTORY_WALK_KEY);
+        await finishTabWalk(walk);
         throw error;
       }
-      await chrome.storage.session.set({ [HISTORY_WALK_KEY]: { ...walk, index, currentTabId: tab.id } });
+      await chrome.storage.session.set({ [HISTORY_WALK_KEY]: { ...walk, index, currentTabId: tab.id, lastStepAt: Date.now() } });
       await recordTab(tab);
       return;
     }
-    await chrome.storage.session.set({ [HISTORY_WALK_KEY]: walk });
+    await chrome.storage.session.set({ [HISTORY_WALK_KEY]: { ...walk, lastStepAt: Date.now() } });
     throw commandError(direction > 0 ? 'history_end' : 'history_start');
   });
 }
@@ -531,7 +564,9 @@ const handlers = {
 async function runCommand(command, granted, invokedTab) {
   if (!Object.hasOwn(handlers, command)) throw commandError('unknown_command');
   const context = await commandContext();
-  if (!['walk-recent-tabs', 'walk-recent-tabs-forward'].includes(command)) await enqueueHistory(() => chrome.storage.session.remove(HISTORY_WALK_KEY));
+  // Copying, pinning, and other commands that leave the selected tab alone do
+  // not reset a walk. Last-active switching deliberately starts a fresh switch.
+  if (command === 'switch-to-last-tab') await enqueueHistory(() => finishTabWalk());
   if (!['move-tabs-to-front', 'move-tabs-to-back'].includes(command)) await chrome.storage.session.remove('lastAction');
   await handlers[command](context, granted, invokedTab);
   await clearError();

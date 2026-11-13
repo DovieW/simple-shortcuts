@@ -29,10 +29,12 @@
     </div>
   </header>
   <div id="status" role="status" aria-live="polite" hidden></div>
+  <div id="shortcutView">
   <div class="search-box"><svg aria-hidden="true"><use href="#icon-search"/></svg><input id="search" type="search" aria-label="Search shortcuts" placeholder="Search" autocomplete="off"></div>
   <section class="memory-section" aria-label="Shortcut memory">
     <p id="memorySummary" role="status">Loading…</p>
     <div class="memory-actions">
+      <button id="openSettings" class="icon-button" type="button" aria-controls="tabSettings"><svg aria-hidden="true"><use href="#icon-settings"/></svg><span class="button-label">Settings</span></button>
       <button id="rememberShortcuts" class="icon-button" type="button" disabled title="Remember current shortcuts" aria-label="Remember current shortcuts"><svg><use href="#icon-save"/></svg><span class="button-label">Save</span></button>
       <label class="icon-button filter-button" title="Show missing or changed only"><input id="onlyDifferences" type="checkbox" aria-label="Show missing or changed only"><svg aria-hidden="true"><use href="#icon-filter"/></svg><span class="button-label">Changes</span></label>
       <button id="moreTools" class="icon-button" type="button" title="Backup options" aria-label="Backup options" aria-expanded="false" aria-controls="backupTools"><svg><use href="#icon-more"/></svg><span class="button-label">Backup</span></button>
@@ -55,9 +57,36 @@
     <h2>Audio</h2>
     <div id="audioTabs"></div>
   </section>
+  </div>
+  <section id="tabSettings" aria-label="Tab switching settings" hidden>
+    <div class="settings-heading"><h2>Tab switching</h2><button id="closeSettings" type="button">Back</button></div>
+    <p class="hint">For Older / Newer recent tab. Changes save automatically with Chrome Sync; tab history stays on this device.</p>
+    <fieldset id="tabSettingsFields" disabled>
+      <label class="setting-check"><input id="resetAfterPause" type="checkbox">Start a fresh switch after a pause</label>
+      <p class="setting-help">Turn off to keep walking the same history until you select another tab.</p>
+      <div class="pause-setting">
+        <label for="pauseSeconds">Pause before a fresh switch</label>
+        <div class="pause-value"><input id="pauseSeconds" type="number" min="0.25" max="10" step="0.05" value="1.5" required aria-describedby="pauseHelp"><span>seconds</span></div>
+        <input id="pauseSlider" type="range" min="0.25" max="10" step="0.05" value="1.5" aria-label="Pause in seconds" aria-describedby="pauseHelp">
+        <p id="pauseHelp" class="setting-help">0.25–10 seconds. Default: 1.5. After the pause, Older returns to your last-used tab; Newer starts at the beginning of a fresh history.</p>
+      </div>
+      <label class="setting-check"><input id="includeOtherWindows" type="checkbox">Include tabs from other windows</label>
+      <p class="setting-help">Uses normal windows in the same regular or incognito context.</p>
+      <label class="setting-check"><input id="wrap" type="checkbox">Wrap around at the ends</label>
+      <p class="setting-help">Continue from the opposite end instead of stopping.</p>
+      <label class="setting-check"><input id="rememberPreviews" type="checkbox">Remember tabs I pass through</label>
+      <p class="setting-help">Off: only the tab you finish on moves to the top of recent history. On: every tab you pass through counts as used.</p>
+    </fieldset>
+    <div class="settings-footer">
+      <button id="resetTabSettings" type="button" disabled>Restore defaults</button>
+      <p id="tabSettingsStatus" role="status" aria-live="polite">Loading settings…</p>
+    </div>
+  </section>
   <script src="command-errors.js"></script>
   <script src="shortcut-ui.js"></script>
   <script src="shortcut-memory.js"></script>
+  <script src="tab-settings.js"></script>
+  <script src="popup-settings.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

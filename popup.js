@@ -266,6 +266,7 @@ async function loadAudioTabs() {
 function windowClose() { window.close(); }
 
 async function initialize() {
+  setupTabSettings();
   setupShortcutMemory();
   document.getElementById('moreTools').addEventListener('click', event => {
     const panel = document.getElementById('backupTools');

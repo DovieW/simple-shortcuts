@@ -1,6 +1,6 @@
 # Simple Shortcuts privacy policy
 
-Effective date: October 6, 2026. This policy describes Simple Shortcuts 0.5.0.
+Effective date: November 13, 2026. This policy describes Simple Shortcuts 0.7.0.
 
 Simple Shortcuts provides keyboard shortcuts for managing browser tabs, groups, windows, navigation, clipboard copying, and media. It has no advertising, analytics, tracking SDKs, remote executable code, or developer-operated data servers. The developer does not receive your tab activity, page content, clipboard contents, or shortcut assignments from the extension.
 
@@ -10,12 +10,13 @@ Simple Shortcuts provides keyboard shortcuts for managing browser tabs, groups, 
 - **Clipboard and page content:** Copy links writes the selected tabs' URLs to the system clipboard. Copy screenshot captures the visible page as a PNG and writes it to the clipboard when you invoke the command. The extension does not read existing clipboard contents or save screenshots to disk, extension storage, or logs. A hidden image helper may retain the most recent screenshot in memory until the next copy or for up to 30 seconds. The operating system and applications you paste into may retain clipboard data under their own policies.
 - **Media controls:** With optional HTTP/HTTPS site access, the extension uses packaged scripts to find and pause HTML audio/video elements in accessible pages, frames, and open shadow roots. This processing is local; page content is not transmitted to the developer. The popup displays audible/muted tab titles and lets you focus or mute those tabs.
 - **Shortcut snapshots:** Choosing Save stores command names, assigned key combinations (including unassigned entries), operating-system platform, and a timestamp in Chrome's sync storage. Chrome may synchronize that data through Google's services according to your Chrome settings and Google's policies. Snapshots contain no tab URLs, page content, screenshots, or browsing history. Opening the popup alone does not replace a saved snapshot.
+- **Tab-switching preferences:** Changes made in Settings save the pause duration, automatic reset, window scope, wrapping, and preview-history preference in Chrome sync storage. Chrome may synchronize these preferences through Google’s services according to your Chrome settings. Tab history, tab identifiers, URLs, and titles are never included in those synced preferences. Restore defaults resets these preferences without changing shortcut snapshots.
 - **Backups:** Export creates a JSON file for the selected platform's shortcut snapshot. Import reads a file you choose to update the remembered snapshot, with confirmation before replacing a different existing setup. These files are not uploaded to the developer.
 - **Operational status:** Chrome's session storage holds fixed error codes, command names, timestamps, and limited command state such as selected tab identifiers and media success/failure counts. It does not store raw browser errors, tab URLs, or titles in error records.
 
 ## Sharing and use
 
-Data is used only to provide the extension's visible features. The extension does not sell user data, use it for advertising, or use it for creditworthiness or lending decisions. It does not transfer tab activity, screenshots, or page content to third parties. Shortcut snapshots may be transferred by Chrome Sync as described above. Clipboard copying and exporting happen at your request; any sharing you perform by pasting or sending exported files is under your control.
+Data is used only to provide the extension's visible features. The extension does not sell user data, use it for advertising, or use it for creditworthiness or lending decisions. It does not transfer tab activity, screenshots, or page content to third parties. Shortcut snapshots and tab-switching preferences may be transferred by Chrome Sync as described above. Clipboard copying and exporting happen at your request; any sharing you perform by pasting or sending exported files is under your control.
 
 Simple Shortcuts' use of user data complies with the Chrome Web Store User Data Policy, including its Limited Use requirements. The developer does not inspect user browsing data through the extension.
 

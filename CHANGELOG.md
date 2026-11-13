@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-11-13
+
+- Finish recent-tab switching after a configurable pause (1.5 seconds by default), so the next Older recent tab press returns to your last-used tab. Quick Older/Newer presses continue through the same stable list.
+- Remember only the final tab by default; intermediate previews no longer reshuffle recent history. Copy links and other commands that leave you on the same tab no longer reset the walk.
+- Add popup **Settings** with an editable pause and slider, a switch to disable the pause, other-window scope, wrapping, preview-history recording, and Restore defaults. Preferences save automatically in Chrome Sync; tab history stays on the device.
+- Preserve session timing across worker suspension, apply synced changes on the next history shortcut, and retain Last active tab as a separate two-tab toggle.
+
+No new permissions or shortcut assignments. Chrome Web Store publication is separate from this GitHub release.
+
 ## 0.6.0 — 2026-10-11
 
 - Add **Unload tabs**, which unloads every highlighted tab while keeping it in the tab bar with its URL, position, pin state, and group membership. The active tab is included: focus moves to an unselected loaded tab, or a new tab when needed. Already unloaded tabs stay unloaded, and other windows are unaffected.

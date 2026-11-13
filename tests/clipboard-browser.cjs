@@ -19,7 +19,7 @@ const { execFileSync } = require('node:child_process');
     // the capture/clipboard pipeline after granting access in a disposable copy.
     const fixture = path.join(root,'extension');
     await fs.mkdir(fixture);
-    for (const file of ['manifest.json','background.js','command-errors.js','popup.html','popup.js','popup.css','shortcut-ui.js','shortcut-memory.js','offscreen.html','offscreen.js','logo16.png','logo48.png','logo128.png']) await fs.copyFile(path.join(extension,file),path.join(fixture,file));
+    for (const file of ['manifest.json','background.js','command-errors.js','popup.html','popup.js','popup.css','shortcut-ui.js','shortcut-memory.js', 'tab-settings.js', 'popup-settings.js','offscreen.html','offscreen.js','logo16.png','logo48.png','logo128.png']) await fs.copyFile(path.join(extension,file),path.join(fixture,file));
     const manifest = JSON.parse(await fs.readFile(path.join(fixture,'manifest.json'),'utf8'));
     manifest.host_permissions = ['<all_urls>'];
     await fs.writeFile(path.join(fixture,'manifest.json'),JSON.stringify(manifest));

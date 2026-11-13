@@ -2,7 +2,9 @@ Control Chrome with useful keyboard shortcuts for tabs, groups, windows, navigat
 
 GET BACK TO THE TAB YOU NEED
 • Last active tab returns to the tab you were just using. Press it again to toggle back.
-• Older recent tab walks backward through a stable list of up to 32 recently used tabs, skipping closed tabs and stopping at the oldest available entry.
+• Older/Newer recent tab walk backward and forward through a stable list of up to 32 recent tabs, skipping closed tabs.
+• Pause for 1.5 seconds to finish switching. Your next Older press returns to your last-used tab; intermediate previews do not reshuffle history by default.
+• Open Settings to adjust or disable the pause, limit switching to one window, wrap at the ends, or remember previews. Settings save automatically with Chrome Sync.
 • Both work across normal Chrome windows in the same regular/incognito context. Collapsed destination groups expand to reveal your tab.
 
 MANAGE TABS AND GROUPS
@@ -38,9 +40,9 @@ Suggested shortcuts on installation:
 Assign the other commands yourself. Chrome or your operating system may reserve a key combination or leave a conflicting suggestion unassigned. Existing assignments remain attached to their existing commands.
 
 PRIVACY
-No analytics, advertising, remote scripts, or developer-operated data servers. Tab activity is used locally for tab switching and organization; screenshots and copied links go to your clipboard only when requested. Shortcut snapshots can use Chrome's sync storage. Media site access is optional and can be revoked from Backup → Revoke media.
+No analytics, advertising, remote scripts, or developer-operated data servers. Tab activity is used locally for tab switching and organization; screenshots and copied links go to your clipboard only when requested. Shortcut snapshots and tab-switching preferences can use Chrome's sync storage; tab history stays on your device. Media site access is optional and can be revoked from Backup → Revoke media.
 
 Requires Chrome 116 or newer.
 Open source: https://github.com/DovieW/simple-shortcuts
 Support: https://github.com/DovieW/simple-shortcuts/issues
-Privacy policy: https://github.com/DovieW/simple-shortcuts/blob/12ad8b4683298d98794ed0813cb3c041b1997e0a/PRIVACY.md
+Privacy policy: https://github.com/DovieW/simple-shortcuts/blob/v0.7.0/PRIVACY.md

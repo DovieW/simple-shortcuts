@@ -82,15 +82,31 @@ Chrome's Commands API can read assignments but cannot set them or report whether
 
 Assign **Walk backward through recently used tabs (up to 32)** and **Walk forward toward newer tabs in the same recent-tab history** in **Edit keys**. The popup calls them **Older recent tab** and **Newer recent tab**. This is separate from **Last active tab**, which keeps toggling between your two most recently used tabs.
 
-The first press freezes the current recent-tab list; each additional press selects the next older surviving tab. For example, after using A → B → C → D, repeated presses take you D → C → B → A. Use **Newer recent tab** to retrace the same list in the other direction: A → B → C → D. You can alternate the two commands at any point. Switching during the walk updates normal last-active history without reordering the frozen list. Closed tabs are skipped, collapsed destination groups expand, and tabs in app windows or the other privacy context are excluded.
+The first press freezes the current recent-tab list. Press again within the switching pause to continue to older tabs, or use **Newer recent tab** to retrace that list. For example, after using A → B → C → D, quick Older presses take you D → C → B → A. Newer reverses those steps. Closed tabs are skipped, collapsed destination groups expand, and tabs in app windows or the other privacy context are excluded.
 
-The walk stops at either end and reports that it reached the boundary; it does not wrap. You can immediately reverse direction, including after a boundary message. On a fresh walk, Newer recent tab leaves you on the starting tab and tells you to use Older recent tab first. Selecting a different tab or window yourself, or running an extension command other than these two history commands, starts a fresh walk next time. The cursor survives worker suspension within the browser session. The 32-entry limit includes your starting tab, so a full list allows up to 31 backward steps.
+By default, a **1.5-second pause** finishes the switching session. The next Older press returns to your last-used tab. For example, walk D → C → B, pause, then press Older to return to D. Only the tab you finish on moves to the top of recent history; tabs you pass through do not reshuffle it. After a pause, Newer starts at the newest end of a fresh list and reports that boundary unless wrapping is enabled. This uses elapsed time between history commands, not release of the Alt key.
+
+Open the popup and choose **Settings** to experiment. Changes save automatically to Chrome Sync and apply on the next history shortcut. Changing a setting starts a fresh walk on that next shortcut. These settings control Older/Newer recent tab; Last active tab remains a two-tab toggle.
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| Start a fresh switch after a pause | On | Turn off to continue the same walk until you select another tab/window or use Last active tab. |
+| Pause before a fresh switch | 1.5 seconds | Adjust with the slider or number field, from 0.25 to 10 seconds. |
+| Include tabs from other windows | On | Turn off to walk only tabs in the starting window. Regular and incognito contexts always stay separate. |
+| Wrap around at the ends | Off | Turn on to continue from the opposite end of the same list. |
+| Remember tabs I pass through | Off | Turn on to count every preview as used, reproducing the previous recency behavior. |
+
+**Restore defaults** resets these five preferences without changing your keys or saved shortcut snapshots. To approximate the previous persistent-walk behavior, turn off the pause and turn on remembering tabs you pass through. Copy links, pinning, and other commands that leave you on the same tab no longer independently reset the walk.
+
+Without wrapping, either end reports a boundary; you can immediately reverse direction. Boundary presses refresh the pause. Manually selecting a different tab or normal window commits your final preview and ends the walk. The cursor and its timing survive worker suspension within the browser session; an expired walk starts fresh on the next use. The 32-entry history limit includes the starting tab and entries from other windows/privacy contexts, so a full list allows at most 31 backward steps and filtering may leave fewer.
+
+Preferences sync across operating systems when Chrome Sync is enabled and the extension ID is the same. Tab history stays in local session storage and is never synced. The shortcut snapshot Export / Import feature covers key assignments only, not these preferences. Chrome manages sync delivery; the popup confirms local saves, not delivery to another device.
 
 ## Windows and global shortcuts
 
 Set a command's scope to **Global** in Chrome's shortcut settings if you want to invoke it while another application has focus. Each command resolves and focuses the last normal Chrome window before acting. App and popup windows are excluded from command targets and last-tab history.
 
-Last-tab history records activations immediately and survives extension worker suspension. Closing several tabs removes them from history; switching also checks that each candidate still exists and selects the most recently used surviving tab. If the active tab closes, Chrome chooses a replacement and the shortcut switches from that replacement to the previous surviving tab. If no other remembered tab remains, it reports that without changing tabs. History retains up to 32 tab entries. It is stored in memory for the current browser session and discarded on browser restart or extension reload. Window cycling, cross-window moves, last-tab switching, and media controls stay within the current normal window's regular/incognito context. Enable the extension in incognito in Chrome if needed.
+Outside a history walk, last-tab history records activations immediately and survives extension worker suspension. During a walk, the preview-recording preference described above applies. Closing several tabs removes them from history; switching also checks that each candidate still exists and selects the most recently used surviving tab. If the active tab closes, Chrome chooses a replacement and the shortcut switches from that replacement to the previous surviving tab. If no other remembered tab remains, it reports that without changing tabs. History retains up to 32 tab entries. It is stored in memory for the current browser session and discarded on browser restart or extension reload. Window cycling, cross-window moves, last-tab switching, and media controls stay within the current normal window's regular/incognito context. Enable the extension in incognito in Chrome if needed.
 
 The **New tab near current** command creates a new tab; it does not focus the current tab’s address bar. Assign its key manually in Chrome’s shortcut settings.
 

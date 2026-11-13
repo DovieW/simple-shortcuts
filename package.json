@@ -1,10 +1,10 @@
 {
   "name": "simple-shortcuts",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "scripts": {
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check background.js && node --check popup.js && node --check shortcut-ui.js && node --check offscreen.js && node --check shortcut-memory.js && node --check command-errors.js",
+    "check": "node --check background.js && node --check popup.js && node --check shortcut-ui.js && node --check offscreen.js && node --check shortcut-memory.js && node --check command-errors.js && node --check tab-settings.js && node --check popup-settings.js",
     "test:browser": "node tests/browser.cjs && node tests/media-browser.cjs && node tests/clipboard-browser.cjs",
     "icons": "node scripts/render-icons.cjs",
     "package": "node scripts/package-release.cjs"
